@@ -16,6 +16,7 @@ import {
     ChevronLeft,
     User,
     Search,
+    Wallet,
 } from 'lucide-react';
 
 export interface HotelSettings {
@@ -102,6 +103,7 @@ const navigation = [
     { name: 'الغرف', href: '/dashboard/rooms', icon: BedDouble },
     { name: 'الحجوزات', href: '/dashboard/bookings', icon: CalendarCheck },
     { name: 'النزلاء', href: '/dashboard/guests', icon: Users },
+    { name: 'المالية', href: '/dashboard/finance', icon: Wallet },
     { name: 'الإعدادات', href: '/dashboard/settings', icon: Settings },
 ];
 
