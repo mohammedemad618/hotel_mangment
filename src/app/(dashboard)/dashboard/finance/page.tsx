@@ -57,6 +57,14 @@ interface FinanceTransaction {
     status: string;
 }
 
+interface FinanceTrend {
+    month: string;
+    revenue: number;
+    paid: number;
+    outstanding: number;
+    bookings: number;
+}
+
 interface FinanceData {
     summary: FinanceSummary;
     recentPayments: RecentPayment[];
@@ -103,6 +111,9 @@ export default function FinancePage() {
     const [data, setData] = useState<FinanceData>(defaultData);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [trends, setTrends] = useState<FinanceTrend[]>([]);
+    const [trendsLoading, setTrendsLoading] = useState(true);
+    const [trendsError, setTrendsError] = useState<string | null>(null);
     const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
     const [transactionsSummary, setTransactionsSummary] = useState<TransactionSummary>(defaultTransactionSummary);
     const [transactionsLoading, setTransactionsLoading] = useState(true);
@@ -119,6 +130,10 @@ export default function FinancePage() {
 
     useEffect(() => {
         fetchFinance();
+    }, []);
+
+    useEffect(() => {
+        fetchTrends();
     }, []);
 
     useEffect(() => {
@@ -159,6 +174,24 @@ export default function FinancePage() {
             setError('حدث خطأ في الاتصال بالخادم');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchTrends = async () => {
+        setTrendsLoading(true);
+        setTrendsError(null);
+        try {
+            const response = await fetchWithRefresh('/api/finance/trends?months=6');
+            const result = await response.json();
+            if (!response.ok) {
+                setTrendsError(result.error || 'تعذر تحميل التقارير الشهرية');
+                return;
+            }
+            setTrends(result.data || []);
+        } catch (err) {
+            setTrendsError('حدث خطأ في الاتصال بالخادم');
+        } finally {
+            setTrendsLoading(false);
         }
     };
 
@@ -211,6 +244,21 @@ export default function FinancePage() {
             timeZone,
         });
     };
+
+    const formatMonthLabel = (monthKey: string) => {
+        const [year, month] = monthKey.split('-').map((value) => Number(value));
+        if (!year || !month) return monthKey;
+        const locale = hotelSettings?.language === 'en' ? 'en-US' : 'ar-SA';
+        return new Date(year, month - 1, 1).toLocaleDateString(locale, {
+            month: 'short',
+            year: '2-digit',
+        });
+    };
+
+    const maxTrendRevenue = useMemo(() => {
+        const values = trends.map((trend) => trend.revenue);
+        return Math.max(...values, 1);
+    }, [trends]);
 
     const exportCsv = () => {
         if (transactions.length === 0) return;
@@ -343,6 +391,85 @@ export default function FinancePage() {
                         {data.summary.totalBookings}
                     </p>
                     <div className="mt-2 text-xs text-white/40">الحجوزات النشطة هذا الموسم.</div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="card p-6 lg:col-span-2">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white">???????? ???????</h2>
+                        <span className="text-xs text-white/50">??? 6 ????</span>
+                    </div>
+                    {trendsError && (
+                        <div className="p-3 mb-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm">
+                            {trendsError}
+                        </div>
+                    )}
+                    {trendsLoading ? (
+                        <div className="flex justify-center py-8">
+                            <div className="spinner w-8 h-8" />
+                        </div>
+                    ) : trends.length === 0 ? (
+                        <div className="text-center text-white/60 py-8">
+                            ?? ???? ?????? ????? ?????? ????????.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex items-end justify-between gap-4 h-48">
+                                {trends.map((trend) => {
+                                    const revenueHeight = Math.round((trend.revenue / maxTrendRevenue) * 100);
+                                    const paidHeight = Math.round((trend.paid / maxTrendRevenue) * 100);
+                                    return (
+                                        <div key={trend.month} className="flex flex-col items-center gap-2 flex-1">
+                                            <div className="relative w-8 sm:w-10 h-36 bg-white/5 rounded-full overflow-hidden flex items-end">
+                                                <div
+                                                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary-500 to-accent-500"
+                                                    style={{ height: `${revenueHeight}%` }}
+                                                />
+                                                <div
+                                                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 sm:w-5 bg-success-500/90 rounded-full"
+                                                    style={{ height: `${paidHeight}%` }}
+                                                />
+                                            </div>
+                                            <div className="text-xs text-white/60">{formatMonthLabel(trend.month)}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-4 flex items-center gap-6 text-xs text-white/50">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-gradient-to-r from-primary-500 to-accent-500" />
+                                    ?????? ?????????
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-success-500" />
+                                    ??????? ???????
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+                <div className="card p-6">
+                    <h2 className="text-lg font-semibold text-white mb-4">?????? ??????</h2>
+                    <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                        {trends.map((trend) => (
+                            <div key={trend.month} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-white/70">{formatMonthLabel(trend.month)}</span>
+                                    <span className="text-xs text-white/50">{trend.bookings} ???</span>
+                                </div>
+                                <div className="mt-2 text-xs text-white/50">
+                                    ?????????: <span className="text-white/80">{formatCurrency(trend.revenue)}</span>
+                                </div>
+                                <div className="mt-1 text-xs text-white/50">
+                                    ??????: <span className="text-white/80">{formatCurrency(trend.paid)}</span>
+                                </div>
+                                <div className="mt-1 text-xs text-white/50">
+                                    ???????: <span className="text-white/80">{formatCurrency(trend.outstanding)}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
