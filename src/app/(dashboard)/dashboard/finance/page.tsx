@@ -25,12 +25,33 @@ interface FinanceSummary {
     refundedBookings: number;
 }
 
+interface TransactionSummary {
+    totalAmount: number;
+    totalPaid: number;
+    totalOutstanding: number;
+    count: number;
+}
+
 interface RecentPayment {
     bookingId: string;
     bookingNumber: string;
     roomNumber: string;
     guestName: string;
     amount: number;
+    method: string;
+    date: string;
+    status: string;
+}
+
+interface FinanceTransaction {
+    bookingId: string;
+    bookingNumber: string;
+    roomNumber: string;
+    guestName: string;
+    total: number;
+    paidAmount: number;
+    remaining: number;
+    latestAmount: number;
     method: string;
     date: string;
     status: string;
@@ -56,6 +77,13 @@ const defaultData: FinanceData = {
     recentPayments: [],
 };
 
+const defaultTransactionSummary: TransactionSummary = {
+    totalAmount: 0,
+    totalPaid: 0,
+    totalOutstanding: 0,
+    count: 0,
+};
+
 const paymentStatusLabels: Record<string, { label: string; badge: string; tone: string }> = {
     paid: { label: 'مدفوع', badge: 'badge-success', tone: 'text-success-500' },
     partial: { label: 'جزئي', badge: 'badge-warning', tone: 'text-warning-500' },
@@ -75,10 +103,27 @@ export default function FinancePage() {
     const [data, setData] = useState<FinanceData>(defaultData);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
+    const [transactionsSummary, setTransactionsSummary] = useState<TransactionSummary>(defaultTransactionSummary);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
+    const [transactionsError, setTransactionsError] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [pages, setPages] = useState(1);
+    const [totalTransactions, setTotalTransactions] = useState(0);
+    const [filters, setFilters] = useState({
+        fromDate: '',
+        toDate: '',
+        status: '',
+        method: '',
+    });
 
     useEffect(() => {
         fetchFinance();
     }, []);
+
+    useEffect(() => {
+        fetchTransactions();
+    }, [filters, page]);
 
     const refreshSession = async () => {
         const response = await fetch('/api/auth/refresh', { method: 'POST' });
@@ -117,6 +162,36 @@ export default function FinancePage() {
         }
     };
 
+    const fetchTransactions = async () => {
+        setTransactionsLoading(true);
+        setTransactionsError(null);
+        try {
+            const params = new URLSearchParams();
+            if (filters.fromDate) params.set('fromDate', filters.fromDate);
+            if (filters.toDate) params.set('toDate', filters.toDate);
+            if (filters.status) params.set('status', filters.status);
+            if (filters.method) params.set('method', filters.method);
+            params.set('page', page.toString());
+            params.set('limit', '10');
+
+            const response = await fetchWithRefresh(`/api/finance/transactions?${params}`);
+            const result = await response.json();
+            if (!response.ok) {
+                setTransactionsError(result.error || 'تعذر تحميل حركة المالية');
+                return;
+            }
+
+            setTransactions(result.data || []);
+            setTransactionsSummary(result.summary || defaultTransactionSummary);
+            setPages(result.pagination?.pages || 1);
+            setTotalTransactions(result.pagination?.total || 0);
+        } catch (err) {
+            setTransactionsError('حدث خطأ في الاتصال بالخادم');
+        } finally {
+            setTransactionsLoading(false);
+        }
+    };
+
     const formatCurrency = (amount: number) => {
         const locale = hotelSettings?.language === 'en' ? 'en-US' : 'ar-SA';
         const currency = hotelSettings?.currency || 'SAR';
@@ -135,6 +210,52 @@ export default function FinancePage() {
             timeStyle: 'short',
             timeZone,
         });
+    };
+
+    const exportCsv = () => {
+        if (transactions.length === 0) return;
+
+        const headers = [
+            'رقم الحجز',
+            'النزيل',
+            'الغرفة',
+            'إجمالي الحجز',
+            'المدفوع',
+            'المتبقي',
+            'آخر دفعة',
+            'طريقة الدفع',
+            'تاريخ العملية',
+            'حالة الدفع',
+        ];
+
+        const escapeValue = (value: string | number) => {
+            const str = String(value ?? '');
+            return `"${str.replace(/"/g, '""')}"`;
+        };
+
+        const rows = transactions.map((tx) => [
+            escapeValue(tx.bookingNumber),
+            escapeValue(tx.guestName),
+            escapeValue(tx.roomNumber || '-'),
+            escapeValue(formatCurrency(tx.total)),
+            escapeValue(formatCurrency(tx.paidAmount)),
+            escapeValue(formatCurrency(tx.remaining)),
+            escapeValue(formatCurrency(tx.latestAmount)),
+            escapeValue(paymentMethodLabels[tx.method] || tx.method),
+            escapeValue(formatDateTime(tx.date)),
+            escapeValue(paymentStatusLabels[tx.status]?.label || 'معلق'),
+        ]);
+
+        const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `finance-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
     };
 
     const revenueTrend = useMemo(() => {
@@ -222,6 +343,97 @@ export default function FinancePage() {
                         {data.summary.totalBookings}
                     </p>
                     <div className="mt-2 text-xs text-white/40">الحجوزات النشطة هذا الموسم.</div>
+                </div>
+            </div>
+
+            <div className="card p-5">
+                <div className="flex flex-col xl:flex-row xl:items-end gap-4">
+                    <div className="flex-1">
+                        <h2 className="text-lg font-semibold text-white">تصفية الحركة المالية</h2>
+                        <p className="text-xs text-white/50 mt-1">
+                            يمكنك تحديد الفترة وحالة الدفع وطريقة الدفع لتصفية النتائج.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <input
+                            type="date"
+                            value={filters.fromDate}
+                            onChange={(e) => {
+                                setPage(1);
+                                setFilters((prev) => ({ ...prev, fromDate: e.target.value }));
+                            }}
+                            className="input min-w-[150px]"
+                        />
+                        <input
+                            type="date"
+                            value={filters.toDate}
+                            onChange={(e) => {
+                                setPage(1);
+                                setFilters((prev) => ({ ...prev, toDate: e.target.value }));
+                            }}
+                            className="input min-w-[150px]"
+                        />
+                        <select
+                            value={filters.status}
+                            onChange={(e) => {
+                                setPage(1);
+                                setFilters((prev) => ({ ...prev, status: e.target.value }));
+                            }}
+                            className="input min-w-[150px]"
+                        >
+                            <option value="">كل حالات الدفع</option>
+                            <option value="paid">مدفوع</option>
+                            <option value="partial">جزئي</option>
+                            <option value="pending">معلق</option>
+                            <option value="refunded">مسترد</option>
+                        </select>
+                        <select
+                            value={filters.method}
+                            onChange={(e) => {
+                                setPage(1);
+                                setFilters((prev) => ({ ...prev, method: e.target.value }));
+                            }}
+                            className="input min-w-[160px]"
+                        >
+                            <option value="">كل طرق الدفع</option>
+                            <option value="cash">نقدي</option>
+                            <option value="card">بطاقة</option>
+                            <option value="bank_transfer">تحويل بنكي</option>
+                            <option value="online">أونلاين</option>
+                        </select>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFilters({ fromDate: '', toDate: '', status: '', method: '' });
+                                setPage(1);
+                            }}
+                            className="btn-secondary"
+                        >
+                            إعادة تعيين
+                        </button>
+                        <button
+                            type="button"
+                            onClick={exportCsv}
+                            className="btn-primary"
+                        >
+                            تصدير CSV
+                        </button>
+                    </div>
+                </div>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {[
+                        { label: 'إجمالي الفترة', value: formatCurrency(transactionsSummary.totalAmount), tone: 'text-success-500' },
+                        { label: 'المدفوع', value: formatCurrency(transactionsSummary.totalPaid), tone: 'text-primary-300' },
+                        { label: 'المتبقي', value: formatCurrency(transactionsSummary.totalOutstanding), tone: 'text-warning-500' },
+                        { label: 'عدد الحجوزات', value: transactionsSummary.count, tone: 'text-white' },
+                    ].map((item) => (
+                        <div key={item.label} className="card p-4 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-white/50">{item.label}</p>
+                                <p className={`text-lg font-semibold ${item.tone}`}>{item.value}</p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -341,6 +553,97 @@ export default function FinancePage() {
                         </table>
                     </div>
                 )}
+            </div>
+
+            <div className="card p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-white">حركة المدفوعات</h2>
+                    <span className="text-xs text-white/50">
+                        عرض {transactions.length} من أصل {totalTransactions}
+                    </span>
+                </div>
+
+                {transactionsError && (
+                    <div className="p-3 mb-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm">
+                        {transactionsError}
+                    </div>
+                )}
+
+                {transactionsLoading ? (
+                    <div className="flex justify-center py-8">
+                        <div className="spinner w-8 h-8" />
+                    </div>
+                ) : transactions.length === 0 ? (
+                    <div className="text-center text-white/60 py-8">
+                        لا توجد عمليات ضمن الفترة المحددة.
+                    </div>
+                ) : (
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الحجز</th>
+                                    <th>النزيل</th>
+                                    <th>الغرفة</th>
+                                    <th>الإجمالي</th>
+                                    <th>المدفوع</th>
+                                    <th>المتبقي</th>
+                                    <th>آخر دفعة</th>
+                                    <th>طريقة الدفع</th>
+                                    <th>التاريخ</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transactions.map((tx) => {
+                                    const status = paymentStatusLabels[tx.status] || paymentStatusLabels.pending;
+                                    return (
+                                        <tr key={tx.bookingId}>
+                                            <td className="font-medium text-white">{tx.bookingNumber}</td>
+                                            <td className="text-white/70">{tx.guestName}</td>
+                                            <td className="text-white/60">{tx.roomNumber || '-'}</td>
+                                            <td className="text-success-500">{formatCurrency(tx.total)}</td>
+                                            <td className="text-primary-300">{formatCurrency(tx.paidAmount)}</td>
+                                            <td className="text-warning-500">{formatCurrency(tx.remaining)}</td>
+                                            <td className="text-white/70">{formatCurrency(tx.latestAmount)}</td>
+                                            <td className="text-white/60">
+                                                {paymentMethodLabels[tx.method] || tx.method}
+                                            </td>
+                                            <td className="text-white/60">{formatDateTime(tx.date)}</td>
+                                            <td>
+                                                <span className={status.badge}>{status.label}</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-white/40">
+                        صفحة {page} من {pages}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                            className="btn-secondary text-sm"
+                            disabled={page <= 1}
+                        >
+                            السابق
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setPage((prev) => Math.min(prev + 1, pages))}
+                            className="btn-secondary text-sm"
+                            disabled={page >= pages}
+                        >
+                            التالي
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
