@@ -9,6 +9,11 @@ import mongoose from 'mongoose';
 import * as argon2 from 'argon2';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/hotel_management';
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'admin@hms.com';
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || 'Admin123!';
+const HOTEL_ADMIN_EMAIL = process.env.HOTEL_ADMIN_EMAIL || 'manager@rabie-hotel.com';
+const HOTEL_ADMIN_PASSWORD = process.env.HOTEL_ADMIN_PASSWORD || 'Hotel123!';
+const FORCE_RESET_SUPER_ADMIN = process.env.FORCE_RESET_SUPER_ADMIN === 'true';
 
 // Schema definitions (simplified for seed script)
 const HotelSchema = new mongoose.Schema({
@@ -69,28 +74,36 @@ async function seed() {
         const Hotel = mongoose.models.Hotel || mongoose.model('Hotel', HotelSchema);
         const User = mongoose.models.User || mongoose.model('User', UserSchema);
         const Room = mongoose.models.Room || mongoose.model('Room', RoomSchema);
-
         // Check if already seeded
         const existingSuperAdmin = await User.findOne({ role: 'super_admin' });
         if (existingSuperAdmin) {
-            console.log('⚠️  Database already seeded. Exiting...');
+            if (FORCE_RESET_SUPER_ADMIN) {
+                console.log('Super Admin exists. Resetting credentials...');
+                existingSuperAdmin.email = SUPER_ADMIN_EMAIL;
+                existingSuperAdmin.passwordHash = await argon2.hash(SUPER_ADMIN_PASSWORD);
+                existingSuperAdmin.isActive = true;
+                await existingSuperAdmin.save();
+                console.log(`   Super Admin updated: ${SUPER_ADMIN_EMAIL}`);
+            } else {
+                console.log('Database already seeded. Exiting...');
+            }
             await mongoose.disconnect();
             return;
         }
 
         // Create Super Admin
         console.log('👤 Creating Super Admin...');
-        const superAdminPassword = await argon2.hash('Admin123!');
+        const superAdminPassword = await argon2.hash(SUPER_ADMIN_PASSWORD);
         const superAdmin = await User.create({
             hotelId: null,
-            email: 'admin@hms.com',
+            email: SUPER_ADMIN_EMAIL,
             passwordHash: superAdminPassword,
             name: 'مدير النظام',
             role: 'super_admin',
             permissions: [],
             isActive: true,
         });
-        console.log(`   ✅ Super Admin created: admin@hms.com`);
+                console.log(`   Super Admin created: ${SUPER_ADMIN_EMAIL}`);
 
         // Create Sample Hotel
         console.log('\n🏨 Creating sample hotel...');
@@ -110,17 +123,17 @@ async function seed() {
 
         // Create Hotel Admin
         console.log('\n👤 Creating hotel admin...');
-        const adminPassword = await argon2.hash('Hotel123!');
+        const adminPassword = await argon2.hash(HOTEL_ADMIN_PASSWORD);
         const hotelAdmin = await User.create({
             hotelId: hotel._id,
-            email: 'manager@rabie-hotel.com',
+            email: HOTEL_ADMIN_EMAIL,
             passwordHash: adminPassword,
             name: 'أحمد المدير',
             role: 'admin',
             permissions: [],
             isActive: true,
         });
-        console.log(`   ✅ Hotel Admin created: manager@rabie-hotel.com`);
+                console.log(`   Hotel Admin created: ${HOTEL_ADMIN_EMAIL}`);
 
         // Create Sample Rooms
         console.log('\n🛏️  Creating sample rooms...');
@@ -141,8 +154,8 @@ async function seed() {
         console.log('\n' + '='.repeat(50));
         console.log('🎉 Database seeded successfully!\n');
         console.log('📋 Login Credentials:');
-        console.log('   Super Admin: admin@hms.com / Admin123!');
-        console.log('   Hotel Admin: manager@rabie-hotel.com / Hotel123!');
+                console.log(`   Super Admin: ${SUPER_ADMIN_EMAIL} / (password hidden)`);
+                console.log(`   Hotel Admin: ${HOTEL_ADMIN_EMAIL} / (password hidden)`);
         console.log('='.repeat(50) + '\n');
 
         await mongoose.disconnect();
@@ -155,3 +168,7 @@ async function seed() {
 }
 
 seed();
+
+
+
+
