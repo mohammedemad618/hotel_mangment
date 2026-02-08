@@ -263,6 +263,7 @@ export default function FinancePage() {
     const exportCsv = () => {
         if (transactions.length === 0) return;
 
+        const delimiter = hotelSettings?.language === 'en' ? ',' : ';';
         const headers = [
             'رقم الحجز',
             'النزيل',
@@ -277,7 +278,7 @@ export default function FinancePage() {
         ];
 
         const escapeValue = (value: string | number) => {
-            const str = String(value ?? '');
+            const str = String(value ?? '').replace(/[\r\n]+/g, ' ');
             return `"${str.replace(/"/g, '""')}"`;
         };
 
@@ -294,8 +295,9 @@ export default function FinancePage() {
             escapeValue(paymentStatusLabels[tx.status]?.label || 'معلق'),
         ]);
 
-        const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const csvContent = [headers, ...rows].map((row) => row.join(delimiter)).join('\n');
+        const bom = '\ufeff'; // Ensure Excel displays Arabic correctly
+        const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
