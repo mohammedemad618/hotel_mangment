@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -7,8 +7,6 @@ import {
     Users,
     TrendingUp,
     DollarSign,
-    ArrowUpRight,
-    ArrowDownRight,
     Settings,
     ShieldCheck,
     Sparkles,
@@ -24,7 +22,10 @@ interface DashboardStats {
     todayCheckOuts: number;
     pendingBookings: number;
     totalGuests: number;
+    totalBookings: number;
+    specialRequestsToday: number;
     monthlyRevenue: number;
+    lastMonthRevenue: number;
 }
 
 const defaultStats: DashboardStats = {
@@ -35,67 +36,99 @@ const defaultStats: DashboardStats = {
     todayCheckOuts: 0,
     pendingBookings: 0,
     totalGuests: 0,
+    totalBookings: 0,
+    specialRequestsToday: 0,
     monthlyRevenue: 0,
+    lastMonthRevenue: 0,
 };
 
 export default function DashboardPage() {
     const { settings: hotelSettings, notifications } = useHotelSettings();
     const [stats, setStats] = useState<DashboardStats>(defaultStats);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Simulated stats for demo
-        setStats({
-            totalRooms: 50,
-            availableRooms: 32,
-            occupiedRooms: 18,
-            todayCheckIns: 5,
-            todayCheckOuts: 3,
-            pendingBookings: 8,
-            totalGuests: 156,
-            monthlyRevenue: 125000,
-        });
-        setLoading(false);
+        fetchStats();
     }, []);
+
+    const refreshSession = async () => {
+        const response = await fetch('/api/auth/refresh', { method: 'POST' });
+        return response.ok;
+    };
+
+    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
+        const response = await fetch(input, init);
+        if (response.status !== 401) {
+            return response;
+        }
+
+        const refreshed = await refreshSession();
+        if (!refreshed) {
+            return response;
+        }
+
+        return fetch(input, init);
+    };
+
+    const fetchStats = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetchWithRefresh('/api/dashboard/stats');
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.error || 'Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…');
+                return;
+            }
+
+            setStats(data.data);
+        } catch (err) {
+            setError('Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const percentOf = (value: number, total: number) => (
+        total > 0 ? Math.round((value / total) * 100) : 0
+    );
+
+    const availableRate = percentOf(stats.availableRooms, stats.totalRooms);
+    const occupiedRate = percentOf(stats.occupiedRooms, stats.totalRooms);
+    const pendingRate = percentOf(stats.pendingBookings, stats.totalBookings);
 
     const statsCards = [
         {
-            title: 'الغرف المتاحة',
+            title: 'Ø§Ù„ØºØ±Ù Ø§Ù„Ù…ØªØ§Ø­Ø©',
             value: stats.availableRooms,
             total: stats.totalRooms,
             icon: BedDouble,
             color: 'bg-success-500',
-            trend: '+12%',
-            trendUp: true,
-            progress: 64,
+            progress: availableRate,
         },
         {
-            title: 'الغرف المشغولة',
+            title: 'Ø§Ù„ØºØ±Ù Ø§Ù„Ù…Ø´ØºÙˆÙ„Ø©',
             value: stats.occupiedRooms,
             total: stats.totalRooms,
             icon: BedDouble,
             color: 'bg-primary-500',
-            trend: '+8%',
-            trendUp: true,
-            progress: 36,
+            progress: occupiedRate,
         },
         {
-            title: 'الحجوزات المعلقة',
+            title: 'Ø§Ù„Ø­Ø¬ÙˆØ²Ø§Øª Ø§Ù„Ù…Ø¹Ù„Ù‚Ø©',
             value: stats.pendingBookings,
             icon: CalendarCheck,
             color: 'bg-warning-500',
-            trend: '-5%',
-            trendUp: false,
-            progress: 48,
+            progress: pendingRate,
         },
         {
-            title: 'إجمالي النزلاء',
+            title: 'Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù†Ø²Ù„Ø§Ø¡',
             value: stats.totalGuests,
             icon: Users,
             color: 'bg-accent-500',
-            trend: '+24%',
-            trendUp: true,
-            progress: 72,
+            progress: 0,
         },
     ];
 
@@ -128,18 +161,24 @@ export default function DashboardPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                            لوحة التحكم التنفيذية
+                            Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ… Ø§Ù„ØªÙ†ÙÙŠØ°ÙŠØ©
                         </h1>
                         <p className="mt-1 text-white/60">
-                            نظرة شاملة على أداء الفندق اليوم.
+                            Ù†Ø¸Ø±Ø© Ø´Ø§Ù…Ù„Ø© Ø¹Ù„Ù‰ Ø£Ø¯Ø§Ø¡ Ø§Ù„ÙÙ†Ø¯Ù‚ Ø§Ù„ÙŠÙˆÙ….
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="badge-success">الحالة: نشط</span>
-                    <span className="badge-primary">الأمان: مستقر</span>
+                    <span className="badge-success">Ø§Ù„Ø­Ø§Ù„Ø©: Ù†Ø´Ø·</span>
+                    <span className="badge-primary">Ø§Ù„Ø£Ù…Ø§Ù†: Ù…Ø³ØªÙ‚Ø±</span>
                 </div>
             </div>
+
+            {error && (
+                <div className="p-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm">
+                    {error}
+                </div>
+            )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -153,15 +192,6 @@ export default function DashboardPage() {
                             <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                                 <stat.icon className="w-6 h-6 text-primary-300" />
                             </div>
-                            <div className={`flex items-center gap-1 text-sm font-medium ${stat.trendUp ? 'text-success-500' : 'text-danger-500'
-                                }`}>
-                                {stat.trendUp ? (
-                                    <ArrowUpRight className="w-4 h-4" />
-                                ) : (
-                                    <ArrowDownRight className="w-4 h-4" />
-                                )}
-                                {stat.trend}
-                            </div>
                         </div>
                         <div className="mt-4">
                             <p className="text-sm text-white/60">{stat.title}</p>
@@ -173,12 +203,14 @@ export default function DashboardPage() {
                                     </span>
                                 )}
                             </p>
-                            <div className="mt-4 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-primary-500 to-accent-500"
-                                    style={{ width: `${stat.progress}%` }}
-                                />
-                            </div>
+                            {stat.progress ? (
+                                <div className="mt-4 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-primary-500 to-accent-500"
+                                        style={{ width: `${stat.progress}%` }}
+                                    />
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 ))}
@@ -190,7 +222,7 @@ export default function DashboardPage() {
                 <div className="card p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">
-                            الإيرادات الشهرية
+                            Ø§Ù„Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø§Ù„Ø´Ù‡Ø±ÙŠØ©
                         </h2>
                         <div className="flex items-center gap-2">
                             <DollarSign className="w-5 h-5 text-success-500" />
@@ -201,7 +233,19 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-white/60">
                         <TrendingUp className="w-4 h-4 text-success-500" />
-                        <span>زيادة بنسبة 18% مقارنة بالشهر الماضي</span>
+                        {stats.lastMonthRevenue > 0 ? (
+                            <span>
+                                {stats.monthlyRevenue >= stats.lastMonthRevenue
+                                    ? `Ø²ÙŠØ§Ø¯Ø© Ø¨Ù†Ø³Ø¨Ø© ${Math.round(
+                                        ((stats.monthlyRevenue - stats.lastMonthRevenue) / stats.lastMonthRevenue) * 100
+                                    )}% Ù…Ù‚Ø§Ø±Ù†Ø© Ø¨Ø§Ù„Ø´Ù‡Ø± Ø§Ù„Ù…Ø§Ø¶ÙŠ`
+                                    : `Ø§Ù†Ø®ÙØ§Ø¶ Ø¨Ù†Ø³Ø¨Ø© ${Math.round(
+                                        ((stats.lastMonthRevenue - stats.monthlyRevenue) / stats.lastMonthRevenue) * 100
+                                    )}% Ù…Ù‚Ø§Ø±Ù†Ø© Ø¨Ø§Ù„Ø´Ù‡Ø± Ø§Ù„Ù…Ø§Ø¶ÙŠ`}
+                            </span>
+                        ) : (
+                            <span>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù„Ù„Ù…Ù‚Ø§Ø±Ù†Ø© Ù…Ø¹ Ø§Ù„Ø´Ù‡Ø± Ø§Ù„Ù…Ø§Ø¶ÙŠ</span>
+                        )}
                     </div>
                     <div className="mt-6 h-40 rounded-2xl border border-white/5 bg-gradient-to-b from-primary-500/20 via-transparent to-transparent" />
                 </div>
@@ -209,20 +253,20 @@ export default function DashboardPage() {
                 {/* Today's Activity */}
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-white mb-6">
-                        نشاط اليوم
+                        Ù†Ø´Ø§Ø· Ø§Ù„ÙŠÙˆÙ…
                     </h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">تسجيل الوصول</span>
-                            <span className="badge-success">{stats.todayCheckIns} نزيل</span>
+                            <span className="text-sm text-white/70">ØªØ³Ø¬ÙŠÙ„ Ø§Ù„ÙˆØµÙˆÙ„</span>
+                            <span className="badge-success">{stats.todayCheckIns} Ù†Ø²ÙŠÙ„</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">تسجيل المغادرة</span>
-                            <span className="badge-warning">{stats.todayCheckOuts} نزيل</span>
+                            <span className="text-sm text-white/70">ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ù…ØºØ§Ø¯Ø±Ø©</span>
+                            <span className="badge-warning">{stats.todayCheckOuts} Ù†Ø²ÙŠÙ„</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">طلبات خاصة</span>
-                            <span className="badge-primary">6</span>
+                            <span className="text-sm text-white/70">Ø·Ù„Ø¨Ø§Øª Ø®Ø§ØµØ©</span>
+                            <span className="badge-primary">{stats.specialRequestsToday}</span>
                         </div>
                     </div>
                 </div>
@@ -231,14 +275,14 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className="card p-6">
                 <h2 className="text-lg font-semibold text-white mb-6">
-                    إجراءات سريعة
+                    Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª Ø³Ø±ÙŠØ¹Ø©
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                        { label: 'حجز جديد', href: '/dashboard/bookings/new', icon: CalendarCheck },
-                        { label: 'إضافة نزيل', href: '/dashboard/guests/new', icon: Users },
-                        { label: 'إضافة غرفة', href: '/dashboard/rooms/new', icon: BedDouble },
-                        { label: 'الإعدادات', href: '/dashboard/settings', icon: Settings },
+                        { label: 'Ø­Ø¬Ø² Ø¬Ø¯ÙŠØ¯', href: '/dashboard/bookings/new', icon: CalendarCheck },
+                        { label: 'Ø¥Ø¶Ø§ÙØ© Ù†Ø²ÙŠÙ„', href: '/dashboard/guests/new', icon: Users },
+                        { label: 'Ø¥Ø¶Ø§ÙØ© ØºØ±ÙØ©', href: '/dashboard/rooms/new', icon: BedDouble },
+                        { label: 'Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª', href: '/dashboard/settings', icon: Settings },
                     ].map((action) => (
                         <a
                             key={action.label}
@@ -254,7 +298,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-6 flex items-center gap-2 text-xs text-white/50">
                     <Sparkles className="w-4 h-4" />
-                    واجهة تشغيل احترافية قابلة للتخصيص حسب احتياجات الفندق.
+                    ÙˆØ§Ø¬Ù‡Ø© ØªØ´ØºÙŠÙ„ Ø§Ø­ØªØ±Ø§ÙÙŠØ© Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªØ®ØµÙŠØµ Ø­Ø³Ø¨ Ø§Ø­ØªÙŠØ§Ø¬Ø§Øª Ø§Ù„ÙÙ†Ø¯Ù‚.
                 </div>
             </div>
 
@@ -262,14 +306,14 @@ export default function DashboardPage() {
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-white">
-                        الإشعارات الأخيرة
+                        Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø§Ù„Ø£Ø®ÙŠØ±Ø©
                     </h2>
                     <Bell className="w-5 h-5 text-primary-300" />
                 </div>
 
                 {notifications.length === 0 ? (
                     <p className="text-white/60">
-                        لا توجد إشعارات حاليا.
+                        Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø­Ø§Ù„ÙŠØ§.
                     </p>
                 ) : (
                     <div className="space-y-3">
@@ -290,3 +334,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+
