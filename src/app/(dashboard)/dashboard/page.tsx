@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -79,13 +79,13 @@ export default function DashboardPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.error || 'Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…');
+                setError(data.error || 'حدث خطأ أثناء جلب بيانات لوحة التحكم');
                 return;
             }
 
             setStats(data.data);
         } catch (err) {
-            setError('Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
+            setError('حدث خطأ في الاتصال بالخادم');
         } finally {
             setLoading(false);
         }
@@ -101,7 +101,7 @@ export default function DashboardPage() {
 
     const statsCards = [
         {
-            title: 'Ø§Ù„ØºØ±Ù Ø§Ù„Ù…ØªØ§Ø­Ø©',
+            title: 'الغرف المتاحة',
             value: stats.availableRooms,
             total: stats.totalRooms,
             icon: BedDouble,
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             progress: availableRate,
         },
         {
-            title: 'Ø§Ù„ØºØ±Ù Ø§Ù„Ù…Ø´ØºÙˆÙ„Ø©',
+            title: 'الغرف المشغولة',
             value: stats.occupiedRooms,
             total: stats.totalRooms,
             icon: BedDouble,
@@ -117,14 +117,14 @@ export default function DashboardPage() {
             progress: occupiedRate,
         },
         {
-            title: 'Ø§Ù„Ø­Ø¬ÙˆØ²Ø§Øª Ø§Ù„Ù…Ø¹Ù„Ù‚Ø©',
+            title: 'الحجوزات المعلقة',
             value: stats.pendingBookings,
             icon: CalendarCheck,
             color: 'bg-warning-500',
             progress: pendingRate,
         },
         {
-            title: 'Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù†Ø²Ù„Ø§Ø¡',
+            title: 'إجمالي النزلاء',
             value: stats.totalGuests,
             icon: Users,
             color: 'bg-accent-500',
@@ -161,16 +161,16 @@ export default function DashboardPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                            Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ… Ø§Ù„ØªÙ†ÙÙŠØ°ÙŠØ©
+                            لوحة التحكم التنفيذية
                         </h1>
                         <p className="mt-1 text-white/60">
-                            Ù†Ø¸Ø±Ø© Ø´Ø§Ù…Ù„Ø© Ø¹Ù„Ù‰ Ø£Ø¯Ø§Ø¡ Ø§Ù„ÙÙ†Ø¯Ù‚ Ø§Ù„ÙŠÙˆÙ….
+                            نظرة شاملة على أداء الفندق اليوم.
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="badge-success">Ø§Ù„Ø­Ø§Ù„Ø©: Ù†Ø´Ø·</span>
-                    <span className="badge-primary">Ø§Ù„Ø£Ù…Ø§Ù†: Ù…Ø³ØªÙ‚Ø±</span>
+                    <span className="badge-success">الحالة: نشط</span>
+                    <span className="badge-primary">الأمان: مستقر</span>
                 </div>
             </div>
 
@@ -222,7 +222,7 @@ export default function DashboardPage() {
                 <div className="card p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">
-                            Ø§Ù„Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø§Ù„Ø´Ù‡Ø±ÙŠØ©
+                            الإيرادات الشهرية
                         </h2>
                         <div className="flex items-center gap-2">
                             <DollarSign className="w-5 h-5 text-success-500" />
@@ -236,15 +236,15 @@ export default function DashboardPage() {
                         {stats.lastMonthRevenue > 0 ? (
                             <span>
                                 {stats.monthlyRevenue >= stats.lastMonthRevenue
-                                    ? `Ø²ÙŠØ§Ø¯Ø© Ø¨Ù†Ø³Ø¨Ø© ${Math.round(
+                                    ? `زيادة بنسبة ${Math.round(
                                         ((stats.monthlyRevenue - stats.lastMonthRevenue) / stats.lastMonthRevenue) * 100
-                                    )}% Ù…Ù‚Ø§Ø±Ù†Ø© Ø¨Ø§Ù„Ø´Ù‡Ø± Ø§Ù„Ù…Ø§Ø¶ÙŠ`
-                                    : `Ø§Ù†Ø®ÙØ§Ø¶ Ø¨Ù†Ø³Ø¨Ø© ${Math.round(
+                                    )}% مقارنة بالشهر الماضي`
+                                    : `انخفاض بنسبة ${Math.round(
                                         ((stats.lastMonthRevenue - stats.monthlyRevenue) / stats.lastMonthRevenue) * 100
-                                    )}% Ù…Ù‚Ø§Ø±Ù†Ø© Ø¨Ø§Ù„Ø´Ù‡Ø± Ø§Ù„Ù…Ø§Ø¶ÙŠ`}
+                                    )}% مقارنة بالشهر الماضي`}
                             </span>
                         ) : (
-                            <span>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù„Ù„Ù…Ù‚Ø§Ø±Ù†Ø© Ù…Ø¹ Ø§Ù„Ø´Ù‡Ø± Ø§Ù„Ù…Ø§Ø¶ÙŠ</span>
+                            <span>لا توجد بيانات للمقارنة مع الشهر الماضي</span>
                         )}
                     </div>
                     <div className="mt-6 h-40 rounded-2xl border border-white/5 bg-gradient-to-b from-primary-500/20 via-transparent to-transparent" />
@@ -253,19 +253,19 @@ export default function DashboardPage() {
                 {/* Today's Activity */}
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-white mb-6">
-                        Ù†Ø´Ø§Ø· Ø§Ù„ÙŠÙˆÙ…
+                        نشاط اليوم
                     </h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">ØªØ³Ø¬ÙŠÙ„ Ø§Ù„ÙˆØµÙˆÙ„</span>
-                            <span className="badge-success">{stats.todayCheckIns} Ù†Ø²ÙŠÙ„</span>
+                            <span className="text-sm text-white/70">تسجيل الوصول</span>
+                            <span className="badge-success">{stats.todayCheckIns} نزيل</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ù…ØºØ§Ø¯Ø±Ø©</span>
-                            <span className="badge-warning">{stats.todayCheckOuts} Ù†Ø²ÙŠÙ„</span>
+                            <span className="text-sm text-white/70">تسجيل المغادرة</span>
+                            <span className="badge-warning">{stats.todayCheckOuts} نزيل</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">Ø·Ù„Ø¨Ø§Øª Ø®Ø§ØµØ©</span>
+                            <span className="text-sm text-white/70">طلبات خاصة</span>
                             <span className="badge-primary">{stats.specialRequestsToday}</span>
                         </div>
                     </div>
@@ -275,14 +275,14 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className="card p-6">
                 <h2 className="text-lg font-semibold text-white mb-6">
-                    Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª Ø³Ø±ÙŠØ¹Ø©
+                    إجراءات سريعة
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                        { label: 'Ø­Ø¬Ø² Ø¬Ø¯ÙŠØ¯', href: '/dashboard/bookings/new', icon: CalendarCheck },
-                        { label: 'Ø¥Ø¶Ø§ÙØ© Ù†Ø²ÙŠÙ„', href: '/dashboard/guests/new', icon: Users },
-                        { label: 'Ø¥Ø¶Ø§ÙØ© ØºØ±ÙØ©', href: '/dashboard/rooms/new', icon: BedDouble },
-                        { label: 'Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª', href: '/dashboard/settings', icon: Settings },
+                        { label: 'حجز جديد', href: '/dashboard/bookings/new', icon: CalendarCheck },
+                        { label: 'إضافة نزيل', href: '/dashboard/guests/new', icon: Users },
+                        { label: 'إضافة غرفة', href: '/dashboard/rooms/new', icon: BedDouble },
+                        { label: 'الإعدادات', href: '/dashboard/settings', icon: Settings },
                     ].map((action) => (
                         <a
                             key={action.label}
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-6 flex items-center gap-2 text-xs text-white/50">
                     <Sparkles className="w-4 h-4" />
-                    ÙˆØ§Ø¬Ù‡Ø© ØªØ´ØºÙŠÙ„ Ø§Ø­ØªØ±Ø§ÙÙŠØ© Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªØ®ØµÙŠØµ Ø­Ø³Ø¨ Ø§Ø­ØªÙŠØ§Ø¬Ø§Øª Ø§Ù„ÙÙ†Ø¯Ù‚.
+                    واجهة تشغيل احترافية قابلة للتخصيص حسب احتياجات الفندق.
                 </div>
             </div>
 
@@ -306,14 +306,14 @@ export default function DashboardPage() {
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-white">
-                        Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø§Ù„Ø£Ø®ÙŠØ±Ø©
+                        الإشعارات الأخيرة
                     </h2>
                     <Bell className="w-5 h-5 text-primary-300" />
                 </div>
 
                 {notifications.length === 0 ? (
                     <p className="text-white/60">
-                        Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø­Ø§Ù„ÙŠØ§.
+                        لا توجد إشعارات حاليا.
                     </p>
                 ) : (
                     <div className="space-y-3">
