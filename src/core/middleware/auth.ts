@@ -18,6 +18,10 @@ export interface AuthContext {
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+function isPlatformAdminRole(role: UserRole): boolean {
+    return role === 'super_admin' || role === 'sub_super_admin';
+}
+
 function isSameOriginRequest(request: NextRequest): boolean {
     const origin = request.headers.get('origin');
     if (!origin) {
@@ -94,7 +98,7 @@ export function withAuth(handler: AuthenticatedHandler) {
             );
         }
 
-        if (user.role !== 'super_admin' && user.hotelId) {
+        if (!isPlatformAdminRole(user.role as UserRole) && user.hotelId) {
             const hotel = await Hotel.findById(user.hotelId).select('isActive').lean();
             if (!hotel?.isActive) {
                 return NextResponse.json(
@@ -177,6 +181,10 @@ export function withRole(
 // ========================================
 
 export function withSuperAdmin(handler: AuthenticatedHandler) {
+    return withRole(['super_admin', 'sub_super_admin'], handler);
+}
+
+export function withMainSuperAdmin(handler: AuthenticatedHandler) {
     return withRole(['super_admin'], handler);
 }
 
@@ -188,7 +196,7 @@ export function withTenant(handler: AuthenticatedHandler) {
     return withAuth(async (request, context, auth) => {
         let effectiveHotelId = auth.hotelId;
 
-        if (!effectiveHotelId && auth.role === 'super_admin') {
+        if (!effectiveHotelId && isPlatformAdminRole(auth.role)) {
             const url = new URL(request.url);
             effectiveHotelId =
                 request.headers.get('x-hotel-id') ||

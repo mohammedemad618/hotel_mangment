@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 // ========================================
 // Hotel (Tenant) Model
@@ -9,6 +9,7 @@ export interface IHotel extends Document {
     slug: string;
     email: string;
     phone: string;
+    createdBy?: Types.ObjectId | null;
     address: {
         street: string;
         city: string;
@@ -19,7 +20,13 @@ export interface IHotel extends Document {
         plan: 'free' | 'basic' | 'premium' | 'enterprise';
         status: 'active' | 'suspended' | 'cancelled';
         startDate: Date;
+        paymentDate: Date | null;
         endDate: Date | null;
+    };
+    verification: {
+        isVerified: boolean;
+        verifiedBy: Types.ObjectId | null;
+        verifiedAt: Date | null;
     };
     settings: {
         currency: string;
@@ -74,6 +81,12 @@ const HotelSchema = new Schema<IHotel>(
             required: [true, 'رقم الهاتف مطلوب'],
             trim: true,
         },
+        createdBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+            index: true,
+        },
         address: {
             street: { type: String, default: '' },
             city: { type: String, required: true },
@@ -92,7 +105,13 @@ const HotelSchema = new Schema<IHotel>(
                 default: 'active',
             },
             startDate: { type: Date, default: Date.now },
+            paymentDate: { type: Date, default: Date.now },
             endDate: { type: Date, default: null },
+        },
+        verification: {
+            isVerified: { type: Boolean, default: false },
+            verifiedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+            verifiedAt: { type: Date, default: null },
         },
         settings: {
             currency: { type: String, default: 'SAR' },
@@ -132,6 +151,7 @@ const HotelSchema = new Schema<IHotel>(
 // Indexes
 HotelSchema.index({ isActive: 1 });
 HotelSchema.index({ 'subscription.status': 1 });
+HotelSchema.index({ 'verification.isVerified': 1 });
 
 export const Hotel: Model<IHotel> =
     mongoose.models.Hotel || mongoose.model<IHotel>('Hotel', HotelSchema);

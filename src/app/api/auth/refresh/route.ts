@@ -13,6 +13,10 @@ import {
 } from '@/core/auth';
 import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
 
+function isPlatformAdminRole(role: string): boolean {
+    return role === 'super_admin' || role === 'sub_super_admin';
+}
+
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        if (user.role !== 'super_admin' && user.hotelId) {
+        if (!isPlatformAdminRole(user.role) && user.hotelId) {
             const hotel = await Hotel.findById(user.hotelId).select('isActive');
             if (!hotel?.isActive) {
                 await clearAuthCookies();

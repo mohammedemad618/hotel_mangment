@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -10,8 +10,9 @@ import {
     Menu,
     X,
     ChevronLeft,
-    User,
+    Users,
     Search,
+    ShieldCheck,
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 
@@ -19,13 +20,19 @@ interface UserData {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role: 'super_admin' | 'sub_super_admin' | string;
 }
 
 const navigation = [
-    { name: 'الفنادق', href: '/super-admin', icon: LayoutDashboard },
-    { name: 'المستخدمون', href: '/super-admin/users', icon: User },
+    { name: 'Hotels & Subscriptions', href: '/super-admin', icon: LayoutDashboard },
+    { name: 'Users & Access', href: '/super-admin/users', icon: Users },
 ];
+
+function getRoleLabel(role?: string): string {
+    if (role === 'super_admin') return 'Main Super Admin';
+    if (role === 'sub_super_admin') return 'Sub Super Admin';
+    return 'Platform Manager';
+}
 
 export default function SuperAdminLayout({
     children,
@@ -46,13 +53,16 @@ export default function SuperAdminLayout({
                     router.push('/login');
                     return;
                 }
+
                 const data = await response.json();
-                if (data.user?.role !== 'super_admin') {
+                const role = data.user?.role;
+                if (role !== 'super_admin' && role !== 'sub_super_admin') {
                     router.push('/dashboard');
                     return;
                 }
+
                 setUser(data.user);
-            } catch (error) {
+            } catch {
                 router.push('/login');
             } finally {
                 setLoading(false);
@@ -61,6 +71,11 @@ export default function SuperAdminLayout({
 
         fetchUser();
     }, [router]);
+
+    const activeItemTitle = useMemo(() => {
+        const match = navigation.find((item) => pathname === item.href || pathname.startsWith(item.href + '/'));
+        return match?.name || 'Platform Dashboard';
+    }, [pathname]);
 
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
@@ -85,8 +100,7 @@ export default function SuperAdminLayout({
             )}
 
             <aside
-                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
-                    }`}
+                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}
             >
                 <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
@@ -94,7 +108,7 @@ export default function SuperAdminLayout({
                             <div className="p-2 bg-primary-500/20 border border-primary-500/40 rounded-lg shadow-glass">
                                 <Building2 className="w-6 h-6 text-primary-300" />
                             </div>
-                            <span className="font-semibold text-white">Super Admin</span>
+                            <span className="font-semibold text-white">Platform Admin</span>
                         </Link>
                         <button
                             onClick={() => setSidebarOpen(false)}
@@ -112,9 +126,8 @@ export default function SuperAdminLayout({
                                     key={item.name}
                                     href={item.href}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border ${isActive
-                                            ? 'bg-primary-500/15 text-white border-primary-500/40'
-                                            : 'text-white/60 border-transparent hover:bg-white/5 hover:text-white'
-                                        }`}
+                                        ? 'bg-primary-500/15 text-white border-primary-500/40'
+                                        : 'text-white/60 border-transparent hover:bg-white/5 hover:text-white'}`}
                                 >
                                     <item.icon className="w-5 h-5" />
                                     <span className="font-medium">{item.name}</span>
@@ -124,26 +137,31 @@ export default function SuperAdminLayout({
                         })}
                     </nav>
 
-                    <div className="p-4 border-t border-white/5">
+                    <div className="p-4 border-t border-white/5 space-y-3">
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                            <div className="flex items-center gap-2 text-xs text-white/50 mb-2">
+                                <ShieldCheck className="w-4 h-4" />
+                                Account level
+                            </div>
+                            <p className="text-sm text-white font-medium">{getRoleLabel(user?.role)}</p>
+                        </div>
+
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
                             <div className="p-2 bg-primary-500/20 rounded-full">
-                                <User className="w-5 h-5 text-primary-300" />
+                                <Users className="w-5 h-5 text-primary-300" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">
-                                    {user?.name}
-                                </p>
-                                <p className="text-xs text-white/50 truncate">
-                                    {user?.email}
-                                </p>
+                                <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+                                <p className="text-xs text-white/50 truncate">{user?.email}</p>
                             </div>
                         </div>
+
                         <button
                             onClick={handleLogout}
-                            className="mt-3 flex items-center gap-3 w-full px-4 py-3 rounded-xl text-danger-500 hover:bg-danger-500/10 transition-colors"
+                            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-danger-500 hover:bg-danger-500/10 transition-colors"
                         >
                             <LogOut className="w-5 h-5" />
-                            <span className="font-medium">تسجيل الخروج</span>
+                            <span className="font-medium">Logout</span>
                         </button>
                     </div>
                 </div>
@@ -162,11 +180,16 @@ export default function SuperAdminLayout({
                             <Search className="w-4 h-4 text-white/40" />
                             <input
                                 className="bg-transparent text-sm text-white/80 placeholder-white/40 focus:outline-none w-full"
-                                placeholder="ابحث عن فندق أو مستخدم..."
+                                placeholder="Search hotels or accounts..."
+                                readOnly
+                                value=""
                             />
                         </div>
                         <div className="flex-1 md:flex-none" />
-                        <span className="text-xs text-white/50 hidden sm:inline">إدارة النظام</span>
+                        <div className="text-end hidden sm:block">
+                            <p className="text-xs text-white/50">Central platform control</p>
+                            <p className="text-sm font-medium text-white/90">{activeItemTitle}</p>
+                        </div>
                     </div>
                 </header>
 

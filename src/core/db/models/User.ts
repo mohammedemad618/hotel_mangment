@@ -8,6 +8,7 @@ import { tenantPlugin } from '../tenantMiddleware';
 
 export type UserRole =
     | 'super_admin'
+    | 'sub_super_admin'
     | 'admin'
     | 'manager'
     | 'receptionist'
@@ -15,7 +16,8 @@ export type UserRole =
     | 'accountant';
 
 export interface IUser extends Document {
-    hotelId: Types.ObjectId | null; // null for super_admin
+    hotelId: Types.ObjectId | null; // null for platform-level admins (super/sub-super)
+    createdBy?: Types.ObjectId | null;
     hotel?: IHotel | null;
     email: string;
     passwordHash: string;
@@ -38,6 +40,12 @@ const UserSchema = new Schema<IUser>(
         hotelId: {
             type: Schema.Types.ObjectId,
             ref: 'Hotel',
+            default: null,
+            index: true,
+        },
+        createdBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
             default: null,
             index: true,
         },
@@ -64,7 +72,7 @@ const UserSchema = new Schema<IUser>(
         },
         role: {
             type: String,
-            enum: ['super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'],
+            enum: ['super_admin', 'sub_super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'],
             required: true,
         },
         permissions: [{
@@ -102,7 +110,7 @@ const UserSchema = new Schema<IUser>(
 
 UserSchema.plugin(tenantPlugin);
 
-// Compound unique index: email is unique per hotel (or globally for super_admin)
+// Compound unique index: email is unique per hotel (or globally for platform-level admins)
 UserSchema.index({ hotelId: 1, email: 1 }, { unique: true });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });

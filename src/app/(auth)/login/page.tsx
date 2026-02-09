@@ -38,7 +38,7 @@ export default function LoginPage() {
                 return;
             }
 
-            if (result.user.role === 'super_admin') {
+            if (result.user.role === 'super_admin' || result.user.role === 'sub_super_admin') {
                 router.push('/super-admin');
             } else {
                 router.push('/dashboard');

@@ -63,6 +63,16 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     super_admin: Object.values(PERMISSIONS),
+    sub_super_admin: [
+        PERMISSIONS.HOTEL_CREATE,
+        PERMISSIONS.HOTEL_READ,
+        PERMISSIONS.HOTEL_UPDATE,
+        PERMISSIONS.USER_CREATE,
+        PERMISSIONS.USER_READ,
+        PERMISSIONS.USER_UPDATE,
+        PERMISSIONS.REPORT_VIEW,
+        PERMISSIONS.REPORT_EXPORT,
+    ],
 
     admin: [
         PERMISSIONS.HOTEL_READ,
@@ -205,6 +215,7 @@ export function getPermissionsForRole(role: UserRole): Permission[] {
 
 const ROLE_HIERARCHY: Record<UserRole, number> = {
     super_admin: 100,
+    sub_super_admin: 90,
     admin: 80,
     manager: 60,
     accountant: 40,

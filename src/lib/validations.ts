@@ -55,12 +55,19 @@ export const createUserSchema = z.object({
     password: z
         .string()
         .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
-    role: z.enum(['super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'], {
+    role: z.enum(['super_admin', 'sub_super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'], {
         errorMap: () => ({ message: 'الدور غير صالح' }),
     }),
     hotelId: z.string().optional().nullable(),
 }).superRefine((data, ctx) => {
-    if (data.role === 'super_admin') {
+    if (data.role === 'super_admin' || data.role === 'sub_super_admin') {
+        if (data.hotelId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Platform roles cannot be linked to a hotel',
+                path: ['hotelId'],
+            });
+        }
         return;
     }
 
@@ -219,3 +226,4 @@ export type UpdateBookingInput = z.infer<typeof updateBookingSchema>;
 export type CreateGuestInput = z.infer<typeof createGuestSchema>;
 export type UpdateGuestInput = z.infer<typeof updateGuestSchema>;
 export type HotelSettingsInput = z.infer<typeof hotelSettingsSchema>;
+
