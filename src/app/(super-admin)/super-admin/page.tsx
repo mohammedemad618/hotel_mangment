@@ -55,11 +55,9 @@ interface HotelItem {
 
 interface SubscriptionForm {
     hotelId: string;
-    isActive: boolean;
     plan: Plan;
-    status: SubscriptionStatus;
     paymentDate: string;
-    endDate: string;
+    currentEndDate: string | null;
 }
 
 interface AdminForm {
@@ -121,13 +119,6 @@ const alertLabels: Record<AlertSeverity, string> = {
     warning: 'تنبيه',
     critical: 'حرج',
     expired: 'منتهي',
-};
-
-const toDateInput = (value?: string | null) => {
-    if (!value) return '';
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toISOString().slice(0, 10);
 };
 
 const formatDate = (value?: string | null) => {
@@ -316,13 +307,12 @@ export default function SuperAdminPage() {
     };
 
     const openSubscription = (hotel: HotelItem) => {
+        const todayDate = new Date().toISOString().slice(0, 10);
         setSubscriptionForm({
             hotelId: hotel._id,
-            isActive: hotel.isActive,
             plan: hotel.subscription?.plan || 'basic',
-            status: hotel.subscription?.status || 'active',
-            paymentDate: toDateInput(hotel.subscription?.paymentDate),
-            endDate: toDateInput(hotel.subscription?.endDate),
+            paymentDate: todayDate,
+            currentEndDate: hotel.subscription?.endDate || null,
         });
     };
 
@@ -333,12 +323,10 @@ export default function SuperAdminPage() {
         setSuccess(null);
         try {
             await patchHotel(subscriptionForm.hotelId, {
-                isActive: subscriptionForm.isActive,
                 subscription: {
                     plan: subscriptionForm.plan,
-                    status: subscriptionForm.status,
                     paymentDate: subscriptionForm.paymentDate || null,
-                    endDate: subscriptionForm.endDate || null,
+                    renew: true,
                 },
             });
             setSubscriptionForm(null);
@@ -628,7 +616,7 @@ export default function SuperAdminPage() {
                                         <td>
                                             <div className="flex flex-wrap gap-1">
                                                 <button className="btn-secondary text-xs" onClick={() => toggleHotel(hotel)}>{hotel.isActive ? 'تعطيل' : 'تفعيل'}</button>
-                                                <button className="btn-secondary text-xs" onClick={() => openSubscription(hotel)}><Settings2 className="w-3.5 h-3.5" />الاشتراك</button>
+                                                <button className="btn-secondary text-xs" onClick={() => openSubscription(hotel)}><Settings2 className="w-3.5 h-3.5" />تجديد الاشتراك</button>
                                                 <button className="btn-secondary text-xs" onClick={() => openAdmin(hotel)}><Pencil className="w-3.5 h-3.5" />حساب المدير</button>
                                                 {isMainSuperAdmin && <button className="btn-secondary text-xs" onClick={() => toggleVerify(hotel)}>{hotel.verification?.isVerified ? 'إلغاء التحقق' : 'تحقق'}</button>}
                                             </div>
@@ -643,15 +631,17 @@ export default function SuperAdminPage() {
 
             {subscriptionForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">تعديل بيانات الاشتراك</h3>
+                    <h3 className="text-base font-semibold text-white">تجديد الاشتراك (30 يوم)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label className="surface-tile flex items-center justify-between text-sm">تفعيل الحساب<input type="checkbox" checked={subscriptionForm.isActive} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} /></label>
                         <select value={subscriptionForm.plan} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, plan: e.target.value as Plan } : prev)} className="input-compact w-full"><option value="free">مجاني</option><option value="basic">أساسي</option><option value="premium">احترافي</option><option value="enterprise">مؤسسي</option></select>
-                        <select value={subscriptionForm.status} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, status: e.target.value as SubscriptionStatus } : prev)} className="input-compact w-full"><option value="active">نشط</option><option value="suspended">معلّق</option><option value="cancelled">ملغي</option></select>
                         <input type="date" value={subscriptionForm.paymentDate} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, paymentDate: e.target.value } : prev)} className="input-compact w-full" />
-                        <input type="date" value={subscriptionForm.endDate} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, endDate: e.target.value } : prev)} className="input-compact w-full" />
+                        <div className="surface-tile text-sm text-white/70">
+                            <p className="text-xs text-white/50 mb-1">تاريخ الانتهاء الحالي</p>
+                            <p className="font-medium text-white">{formatDate(subscriptionForm.currentEndDate)}</p>
+                            <p className="text-xs text-white/50 mt-2">عند التجديد سيتم تمديد الاشتراك تلقائياً لمدة 30 يوم، وتفعيل الحساب.</p>
+                        </div>
                     </div>
-                    <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setSubscriptionForm(null)}>إغلاق</button><button className="btn-primary text-sm" onClick={saveSubscription} disabled={savingSubscription}>{savingSubscription ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ الاشتراك'}</button></div>
+                    <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setSubscriptionForm(null)}>إغلاق</button><button className="btn-primary text-sm" onClick={saveSubscription} disabled={savingSubscription}>{savingSubscription ? <Loader2 className="w-4 h-4 animate-spin" /> : 'تجديد الاشتراك'}</button></div>
                 </div>
             )}
 

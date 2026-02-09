@@ -12,6 +12,7 @@ import {
     verifyRefreshToken,
 } from '@/core/auth';
 import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
+import { isSubscriptionExpired } from '@/core/subscription/policy';
 
 function isPlatformAdminRole(role: string): boolean {
     return role === 'super_admin' || role === 'sub_super_admin';
@@ -77,7 +78,28 @@ export async function POST(request: NextRequest) {
         }
 
         if (!isPlatformAdminRole(user.role) && user.hotelId) {
-            const hotel = await Hotel.findById(user.hotelId).select('isActive');
+            const hotel = await Hotel.findById(user.hotelId).select('isActive subscription.endDate subscription.status');
+
+            if (isSubscriptionExpired(hotel?.subscription?.endDate || null)) {
+                if (hotel && (hotel.isActive || hotel.subscription?.status !== 'suspended')) {
+                    await Hotel.updateOne(
+                        { _id: hotel._id },
+                        {
+                            $set: {
+                                isActive: false,
+                                'subscription.status': 'suspended',
+                            },
+                        }
+                    );
+                }
+
+                await clearAuthCookies();
+                return NextResponse.json(
+                    { error: 'Hotel subscription has expired. Please renew to reactivate the account.' },
+                    { status: 403 }
+                );
+            }
+
             if (!hotel?.isActive) {
                 await clearAuthCookies();
                 return NextResponse.json({ error: 'Hotel is inactive' }, { status: 403 });

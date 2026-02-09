@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
-import { User } from '@/core/db/models';
+import { Hotel, User } from '@/core/db/models';
 import { verifyPassword, generateTokenPair, setAuthCookies, getPermissionsForRole, hashToken } from '@/core/auth';
 import { loginSchema } from '@/lib/validations';
 import { UserRole } from '@/core/db/models';
 import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
+import { isSubscriptionExpired } from '@/core/subscription/policy';
 
 function isPlatformAdminRole(role: string): boolean {
     return role === 'super_admin' || role === 'sub_super_admin';
@@ -66,10 +67,29 @@ export async function POST(request: NextRequest) {
 
         // Check if hotel is active (for non-super admins)
         if (!isPlatformAdminRole(user.role) && user.hotelId) {
-            const hotel = await import('@/core/db/models').then(m => m.Hotel.findById(user.hotelId));
+            const hotel = await Hotel.findById(user.hotelId).select('isActive subscription.endDate subscription.status');
+            if (isSubscriptionExpired(hotel?.subscription?.endDate || null)) {
+                if (hotel && (hotel.isActive || hotel.subscription?.status !== 'suspended')) {
+                    await Hotel.updateOne(
+                        { _id: hotel._id },
+                        {
+                            $set: {
+                                isActive: false,
+                                'subscription.status': 'suspended',
+                            },
+                        }
+                    );
+                }
+
+                return NextResponse.json(
+                    { error: 'Hotel subscription has expired. Please renew to reactivate the account.' },
+                    { status: 403 }
+                );
+            }
+
             if (!hotel?.isActive) {
                 return NextResponse.json(
-                    { error: 'الفندق غير مفعّل - يرجى التواصل مع الدعم' },
+                    { error: 'Hotel is inactive - please contact support' },
                     { status: 403 }
                 );
             }
@@ -125,3 +145,4 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+

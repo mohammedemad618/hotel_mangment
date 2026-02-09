@@ -7,6 +7,7 @@ import { registerHotelSchema } from '@/lib/validations';
 import { hashPassword, validatePasswordStrength } from '@/core/auth';
 import { escapeRegex, normalizeSearchTerm } from '@/core/security/input';
 import { writeAuditLog } from '@/core/audit/logger';
+import { addDays, SUBSCRIPTION_RENEWAL_DAYS } from '@/core/subscription/policy';
 
 const MAX_LIMIT = 100;
 
@@ -143,6 +144,9 @@ async function createHotel(
 
         const slug = await generateUniqueSlug(hotelName);
 
+        const now = new Date();
+        const initialEndDate = addDays(now, SUBSCRIPTION_RENEWAL_DAYS);
+
         const hotel = await Hotel.create({
             name: hotelName,
             slug,
@@ -153,9 +157,9 @@ async function createHotel(
             subscription: {
                 plan: 'basic',
                 status: 'active',
-                startDate: new Date(),
-                paymentDate: new Date(),
-                endDate: null,
+                startDate: now,
+                paymentDate: now,
+                endDate: initialEndDate,
             },
             verification: { isVerified: false, verifiedBy: null, verifiedAt: null },
         });

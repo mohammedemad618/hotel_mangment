@@ -4,6 +4,7 @@ import { hasPermission, Permission, getPermissionsForRole } from '../auth/roles'
 import { UserRole, User, Hotel } from '../db/models';
 import { runWithTenant } from '../db/tenantMiddleware';
 import connectDB from '../db/connection';
+import { isSubscriptionExpired } from '../subscription/policy';
 
 // ========================================
 // Auth Context Type
@@ -107,7 +108,29 @@ export function withAuth(handler: AuthenticatedHandler) {
         }
 
         if (!isPlatformAdminRole(user.role as UserRole) && user.hotelId) {
-            const hotel = await Hotel.findById(user.hotelId).select('isActive').lean();
+            const hotel = await Hotel.findById(user.hotelId)
+                .select('isActive subscription.endDate subscription.status')
+                .lean();
+
+            if (isSubscriptionExpired((hotel as any)?.subscription?.endDate || null)) {
+                if (hotel?._id && (hotel.isActive || (hotel as any)?.subscription?.status !== 'suspended')) {
+                    await Hotel.updateOne(
+                        { _id: hotel._id },
+                        {
+                            $set: {
+                                isActive: false,
+                                'subscription.status': 'suspended',
+                            },
+                        }
+                    );
+                }
+
+                return NextResponse.json(
+                    { error: 'Hotel subscription is expired' },
+                    { status: 403 }
+                );
+            }
+
             if (!hotel?.isActive) {
                 return NextResponse.json(
                     { error: 'Hotel is inactive' },

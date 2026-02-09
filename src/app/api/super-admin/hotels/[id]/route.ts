@@ -4,6 +4,7 @@ import { Hotel, User } from '@/core/db/models';
 import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import mongoose from 'mongoose';
 import { writeAuditLog } from '@/core/audit/logger';
+import { computeRenewalEndDate, isSubscriptionExpired } from '@/core/subscription/policy';
 
 const PLAN_VALUES = new Set(['free', 'basic', 'premium', 'enterprise']);
 const STATUS_VALUES = new Set(['active', 'suspended', 'cancelled']);
@@ -60,17 +61,14 @@ async function updateHotel(
 
         const body = await request.json() as Record<string, unknown>;
         const updates: Record<string, unknown> = {};
-
-        if (hasOwn(body, 'isActive')) {
-            if (typeof body.isActive !== 'boolean') {
-                return NextResponse.json({ error: 'Invalid activation value' }, { status: 400 });
-            }
-            updates.isActive = body.isActive;
-        }
+        const now = new Date();
+        const subscriptionExpired = isSubscriptionExpired(targetHotel.subscription?.endDate, now);
+        let renewedSubscription = false;
 
         const subscription = body.subscription;
         if (subscription && typeof subscription === 'object' && !Array.isArray(subscription)) {
             const payload = subscription as Record<string, unknown>;
+            const renew = payload.renew === true;
 
             if (hasOwn(payload, 'plan')) {
                 if (typeof payload.plan !== 'string' || !PLAN_VALUES.has(payload.plan)) {
@@ -79,19 +77,92 @@ async function updateHotel(
                 updates['subscription.plan'] = payload.plan;
             }
 
-            if (hasOwn(payload, 'status')) {
-                if (typeof payload.status !== 'string' || !STATUS_VALUES.has(payload.status)) {
-                    return NextResponse.json({ error: 'Invalid subscription status' }, { status: 400 });
+            if (renew) {
+                let paymentDate = now;
+                if (hasOwn(payload, 'paymentDate')) {
+                    try {
+                        const parsed = parseDateInput(payload.paymentDate);
+                        if (!parsed) {
+                            return NextResponse.json(
+                                { error: 'Payment date is required for renewal' },
+                                { status: 400 }
+                            );
+                        }
+                        paymentDate = parsed;
+                    } catch {
+                        return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+                    }
                 }
-                updates['subscription.status'] = payload.status;
+
+                if (hasOwn(payload, 'status') && payload.status !== 'active') {
+                    return NextResponse.json(
+                        { error: 'Renewal always sets subscription status to active' },
+                        { status: 400 }
+                    );
+                }
+
+                if (hasOwn(payload, 'endDate')) {
+                    return NextResponse.json(
+                        { error: 'End date is managed automatically on renewal (30 days)' },
+                        { status: 400 }
+                    );
+                }
+
+                const nextEndDate = computeRenewalEndDate(
+                    targetHotel.subscription?.endDate || null,
+                    paymentDate
+                );
+
+                updates['subscription.paymentDate'] = paymentDate;
+                updates['subscription.endDate'] = nextEndDate;
+                updates['subscription.status'] = 'active';
+                updates.isActive = true;
+                renewedSubscription = true;
+            } else {
+                if (hasOwn(payload, 'status')) {
+                    if (typeof payload.status !== 'string' || !STATUS_VALUES.has(payload.status)) {
+                        return NextResponse.json({ error: 'Invalid subscription status' }, { status: 400 });
+                    }
+
+                    if (payload.status === 'active' && subscriptionExpired) {
+                        return NextResponse.json(
+                            { error: 'Cannot activate expired subscription without renewal' },
+                            { status: 400 }
+                        );
+                    }
+
+                    updates['subscription.status'] = payload.status;
+                }
+
+                if (hasOwn(payload, 'paymentDate') || hasOwn(payload, 'endDate')) {
+                    return NextResponse.json(
+                        { error: 'Use renewal action to update subscription dates' },
+                        { status: 400 }
+                    );
+                }
+            }
+        }
+
+        if (hasOwn(body, 'isActive')) {
+            if (typeof body.isActive !== 'boolean') {
+                return NextResponse.json({ error: 'Invalid activation value' }, { status: 400 });
             }
 
-            try {
-                if (hasOwn(payload, 'paymentDate')) updates['subscription.paymentDate'] = parseDateInput(payload.paymentDate);
-                if (hasOwn(payload, 'endDate')) updates['subscription.endDate'] = parseDateInput(payload.endDate);
-            } catch {
-                return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+            if (renewedSubscription && body.isActive === false) {
+                return NextResponse.json(
+                    { error: 'Renewal cannot be combined with deactivation' },
+                    { status: 400 }
+                );
             }
+
+            if (body.isActive && subscriptionExpired && !renewedSubscription) {
+                return NextResponse.json(
+                    { error: 'Cannot activate an expired subscription without renewal' },
+                    { status: 400 }
+                );
+            }
+
+            updates.isActive = body.isActive;
         }
 
         if (hasOwn(body, 'isVerified')) {
