@@ -85,13 +85,13 @@ export default function SuperAdminLayout({
             )}
 
             <aside
-                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[rgba(10,8,22,0.92)] border-l border-white/5 shadow-2xl backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
                     }`}
             >
                 <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
                         <Link href="/super-admin" className="flex items-center gap-3">
-                            <div className="p-2 bg-primary-500/20 border border-primary-500/30 rounded-lg">
+                            <div className="p-2 bg-primary-500/20 border border-primary-500/40 rounded-lg shadow-glass">
                                 <Building2 className="w-6 h-6 text-primary-300" />
                             </div>
                             <span className="font-semibold text-white">Super Admin</span>
@@ -150,7 +150,7 @@ export default function SuperAdminLayout({
             </aside>
 
             <div className="lg:mr-72">
-                <header className="sticky top-0 z-30 bg-[rgba(10,8,22,0.86)] backdrop-blur-xl border-b border-white/5">
+                <header className="sticky top-0 z-30 bg-[color:var(--app-surface)] backdrop-blur-xl border-b border-white/10">
                     <div className="flex items-center h-16 px-4 sm:px-6 lg:px-8 gap-4">
                         <button
                             onClick={() => setSidebarOpen(true)}
@@ -158,7 +158,7 @@ export default function SuperAdminLayout({
                         >
                             <Menu className="w-6 h-6" />
                         </button>
-                        <div className="hidden md:flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex-1 max-w-xl">
+                        <div className="hidden md:flex items-center gap-2 bg-[color:var(--app-surface-strong)] border border-white/10 rounded-xl px-3 py-2 flex-1 max-w-xl">
                             <Search className="w-4 h-4 text-white/40" />
                             <input
                                 className="bg-transparent text-sm text-white/80 placeholder-white/40 focus:outline-none w-full"

@@ -326,10 +326,10 @@ export default function FinancePage() {
         : 0;
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-2xl bg-primary-500/20 border border-primary-500/30">
+        <div className="space-y-7">
+            <div className="page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="relative z-10 flex items-center gap-3">
+                    <div className="stat-icon">
                         <Wallet className="w-6 h-6 text-primary-300" />
                     </div>
                     <div>
@@ -341,7 +341,7 @@ export default function FinancePage() {
                         </p>
                     </div>
                 </div>
-                <button onClick={refreshAll} className="btn-secondary">
+                <button onClick={refreshAll} className="btn-secondary relative z-10">
                     <RefreshCcw className="w-4 h-4" />
                     {t(lang, 'تحديث البيانات', 'Refresh')}
                 </button>
@@ -354,7 +354,7 @@ export default function FinancePage() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <div className="card p-5">
+                <div className="stat-card">
                     <p className="text-sm text-white/50">
                         {t(lang, 'إيرادات هذا الشهر', 'This Month Revenue')}
                     </p>
@@ -376,7 +376,7 @@ export default function FinancePage() {
                         </div>
                     )}
                 </div>
-                <div className="card p-5">
+                <div className="stat-card">
                     <p className="text-sm text-white/50">
                         {t(lang, 'المدفوعات المستلمة', 'Payments Received')}
                     </p>
@@ -393,7 +393,7 @@ export default function FinancePage() {
                         {t(lang, `نسبة التحصيل ${paidRate}%`, `Collection rate ${paidRate}%`)}
                     </div>
                 </div>
-                <div className="card p-5">
+                <div className="stat-card">
                     <p className="text-sm text-white/50">
                         {t(lang, 'المتبقي للتحصيل', 'Outstanding Balance')}
                     </p>
@@ -404,7 +404,7 @@ export default function FinancePage() {
                         {t(lang, 'بناءً على الحجوزات غير المسددة بالكامل.', 'Based on bookings not fully paid.')}
                     </div>
                 </div>
-                <div className="card p-5">
+                <div className="stat-card">
                     <p className="text-sm text-white/50">
                         {t(lang, 'إجمالي الحجوزات', 'Total Bookings')}
                     </p>
@@ -418,7 +418,7 @@ export default function FinancePage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="card p-6 lg:col-span-2">
+                <div className="card p-6 lg:col-span-2 relative overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-semibold text-white">
                             {t(lang, 'إيرادات الأشهر', 'Monthly Revenue')}
@@ -482,7 +482,7 @@ export default function FinancePage() {
                     </h2>
                     <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                         {trends.map((trend) => (
-                            <div key={trend.month} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                            <div key={trend.month} className="surface-tile">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-white/70">{formatMonthLabel(trend.month)}</span>
                                     <span className="text-xs text-white/50">
@@ -504,7 +504,7 @@ export default function FinancePage() {
                 </div>
             </div>
 
-            <div className="card p-5">
+            <div className="filter-shell">
                 <div className="flex flex-col xl:flex-row xl:items-end gap-4">
                     <div className="flex-1">
                         <h2 className="text-lg font-semibold text-white">
@@ -587,7 +587,7 @@ export default function FinancePage() {
                         { id: 'outstanding', label: t(lang, 'المتبقي', 'Outstanding'), value: formatCurrency(transactionsSummary.totalOutstanding), tone: 'text-warning-500' },
                         { id: 'count', label: t(lang, 'عدد الحجوزات', 'Bookings'), value: transactionsSummary.count, tone: 'text-white' },
                     ].map((item) => (
-                        <div key={item.id} className="card p-4 flex items-center justify-between">
+                        <div key={item.id} className="surface-tile flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-white/50">{item.label}</p>
                                 <p className={`text-lg font-semibold ${item.tone}`}>{item.value}</p>
@@ -598,7 +598,7 @@ export default function FinancePage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="card p-6 lg:col-span-2">
+                <div className="card p-6 lg:col-span-2 relative overflow-hidden">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-white">
                             {t(lang, 'تحليل التحصيل', 'Collections Analysis')}
@@ -606,7 +606,7 @@ export default function FinancePage() {
                         <DollarSign className="w-5 h-5 text-success-500" />
                     </div>
                     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <CheckCircle2 className="w-4 h-4 text-success-500" />
                                 {t(lang, 'المدفوعات المكتملة', 'Completed Payments')}
@@ -615,7 +615,7 @@ export default function FinancePage() {
                                 {data.summary.paidBookings}
                             </p>
                         </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <AlertCircle className="w-4 h-4 text-warning-500" />
                                 {t(lang, 'المدفوعات الجزئية', 'Partial Payments')}
@@ -624,7 +624,7 @@ export default function FinancePage() {
                                 {data.summary.partialBookings}
                             </p>
                         </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <Clock className="w-4 h-4 text-primary-300" />
                                 {t(lang, 'المدفوعات المعلقة', 'Pending Payments')}
@@ -633,7 +633,7 @@ export default function FinancePage() {
                                 {data.summary.pendingBookings}
                             </p>
                         </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <AlertCircle className="w-4 h-4 text-danger-500" />
                                 {t(lang, 'المدفوعات المستردة', 'Refunded Payments')}
@@ -657,7 +657,7 @@ export default function FinancePage() {
                         ].map((item) => {
                             const status = paymentStatusLabels[item.key];
                             return (
-                                <div key={item.key} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                                <div key={item.key} className="surface-tile flex items-center justify-between">
                                     <span className="text-white/70">{status.label[lang]}</span>
                                     <span className={status.badge}>{item.value}</span>
                                 </div>
@@ -683,7 +683,7 @@ export default function FinancePage() {
                         {t(lang, 'لا توجد دفعات مسجلة حتى الآن.', 'No payments recorded yet.')}
                     </div>
                 ) : (
-                    <div className="table-container">
+                    <div className="table-container shadow-card">
                         <table className="table">
                             <thead>
                                 <tr>
@@ -750,7 +750,7 @@ export default function FinancePage() {
                         {t(lang, 'لا توجد عمليات ضمن الفترة المحددة.', 'No transactions in the selected period.')}
                     </div>
                 ) : (
-                    <div className="table-container">
+                    <div className="table-container shadow-card">
                         <table className="table">
                             <thead>
                                 <tr>

@@ -210,15 +210,15 @@ export default function NewBookingPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-4 mb-8">
+        <div className="max-w-4xl mx-auto space-y-6">
+            <div className="page-hero flex items-center gap-4">
                 <button
                     onClick={() => router.back()}
-                    className="p-2 rounded-lg hover:bg-white/10"
+                    className="relative z-10 p-2 rounded-lg hover:bg-white/10"
                 >
                     <ArrowRight className="w-5 h-5" />
                 </button>
-                <div>
+                <div className="relative z-10">
                     <h1 className="text-2xl font-bold text-white">
                         {t(lang, 'إنشاء حجز جديد', 'Create New Booking')}
                     </h1>
@@ -229,13 +229,13 @@ export default function NewBookingPage() {
             </div>
 
             {error && (
-                <div className="mb-6 p-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm animate-slide-down">
+                <div className="p-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm animate-slide-down">
                     {error}
                 </div>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="card p-6 space-y-6">
+                <div className="filter-shell space-y-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <CalendarCheck className="w-5 h-5 text-primary-300" />
                         {t(lang, 'تفاصيل الحجز', 'Booking Details')}
@@ -268,7 +268,7 @@ export default function NewBookingPage() {
                                     disabled={loadingOptions}
                                 />
                                 {roomOpen && (
-                                    <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-[rgba(12,8,24,0.96)] shadow-xl max-h-56 overflow-auto">
+                                    <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-[color:var(--app-surface-strong)] shadow-xl max-h-56 overflow-auto">
                                         {filteredRooms.length === 0 ? (
                                             <div className="px-4 py-3 text-xs text-white/50">
                                                 {t(lang, 'لا توجد غرف مطابقة للبحث.', 'No matching rooms found.')}
@@ -324,7 +324,7 @@ export default function NewBookingPage() {
                                     disabled={loadingOptions}
                                 />
                                 {guestOpen && (
-                                    <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-[rgba(12,8,24,0.96)] shadow-xl max-h-56 overflow-auto">
+                                    <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-[color:var(--app-surface-strong)] shadow-xl max-h-56 overflow-auto">
                                         {filteredGuests.length === 0 ? (
                                             <div className="px-4 py-3 text-xs text-white/50">
                                                 {t(lang, 'لا يوجد نزلاء مطابقون للبحث.', 'No matching guests found.')}
@@ -456,13 +456,13 @@ export default function NewBookingPage() {
                         </p>
                     ) : pricingSummary.valid ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                            <div className="card p-4 bg-white/5">
+                            <div className="surface-tile">
                                 <p className="text-white/50">{t(lang, 'سعر الليلة', 'Nightly rate')}</p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(selectedRoom.pricePerNight)}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="surface-tile">
                                 <p className="text-white/50">{t(lang, 'عدد الليالي', 'Nights')}</p>
                                 <p className="font-semibold text-white">
                                     {t(
@@ -472,7 +472,7 @@ export default function NewBookingPage() {
                                     )}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="surface-tile">
                                 <p className="text-white/50">
                                     {t(lang, `الضريبة (${taxRate}%)`, `Tax (${taxRate}%)`)}
                                 </p>
@@ -480,7 +480,7 @@ export default function NewBookingPage() {
                                     {formatCurrency(pricingSummary.taxes)}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="surface-tile">
                                 <p className="text-white/50">{t(lang, 'الإجمالي المتوقع', 'Estimated total')}</p>
                                 <p className="font-semibold text-success-500">
                                     {formatCurrency(pricingSummary.total)}

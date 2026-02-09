@@ -170,18 +170,23 @@ export default function RoomsPage() {
     }, [filteredRooms, sortBy, sortDir]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-7">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white">
+            <div className="page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="relative z-10 flex items-center gap-4">
+                    <div className="stat-icon">
+                        <BedDouble className="w-6 h-6 text-primary-300" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">
                         {t(lang, 'إدارة الغرف', 'Room Management')}
                     </h1>
                     <p className="mt-1 text-white/60">
                         {t(lang, 'تابع حالة الغرف وأدر التسعير والتوافر بسهولة.', 'Track room status, pricing, and availability.')}
                     </p>
+                    </div>
                 </div>
-                <Link href="/dashboard/rooms/new" className="btn-primary">
+                <Link href="/dashboard/rooms/new" className="btn-primary relative z-10">
                     <Plus className="w-5 h-5" />
                     <span>{t(lang, 'إضافة غرفة', 'Add Room')}</span>
                 </Link>
@@ -196,8 +201,8 @@ export default function RoomsPage() {
                     { id: 'reserved', label: statusConfig.reserved.label[lang], value: stats.reserved, icon: CalendarCheck, tone: 'text-warning-500' },
                     { id: 'maintenance', label: t(lang, 'صيانة/تنظيف', 'Maintenance/Cleaning'), value: stats.maintenance, icon: Wrench, tone: 'text-danger-500' },
                 ].map((item) => (
-                    <div key={item.id} className="card p-4 flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-white/5 border border-white/10">
+                    <div key={item.id} className="stat-card flex items-center gap-3">
+                        <div className="stat-icon">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
                         <div>
@@ -209,7 +214,7 @@ export default function RoomsPage() {
             </div>
 
             {/* Filters */}
-            <div className="card p-4">
+            <div className="filter-shell">
                 <div className="flex flex-col xl:flex-row gap-4">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -277,7 +282,7 @@ export default function RoomsPage() {
                                 ? t(lang, 'تصاعدي', 'Ascending')
                                 : t(lang, 'تنازلي', 'Descending')}
                         </button>
-                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('grid')}
@@ -345,9 +350,10 @@ export default function RoomsPage() {
                         return (
                             <div
                                 key={room._id}
-                                className="card p-5 hover:shadow-card-hover transition-shadow animate-slide-up"
+                                className="card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
+                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary-500/0 via-primary-500/70 to-accent-500/0" />
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs text-white/40">{t(lang, 'رقم الغرفة', 'Room #')}</p>
@@ -391,7 +397,7 @@ export default function RoomsPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-4 border-t border-white/5">
+                                <div className="mt-4 pt-4 border-t border-white/10">
                                     <Link
                                         href={`/dashboard/rooms/${room._id}`}
                                         className="btn-secondary w-full text-sm"
@@ -404,7 +410,7 @@ export default function RoomsPage() {
                     })}
                 </div>
             ) : (
-                <div className="table-container">
+                <div className="table-container shadow-card">
                     <table className="table">
                         <thead>
                             <tr>

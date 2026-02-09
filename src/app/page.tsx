@@ -20,7 +20,7 @@ export default function HomePage() {
                         className="absolute inset-0"
                         style={{
                             backgroundImage:
-                                'radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.45), transparent 40%), radial-gradient(circle at 80% 15%, rgba(244, 63, 140, 0.3), transparent 40%)',
+                                'radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.35), transparent 42%), radial-gradient(circle at 80% 15%, rgba(6, 182, 212, 0.28), transparent 42%)',
                         }}
                     />
                 </div>

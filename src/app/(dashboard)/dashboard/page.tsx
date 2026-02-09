@@ -141,9 +141,9 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="space-y-8">
-            <div className="card p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="flex items-center gap-4">
+        <div className="space-y-7">
+            <div className="page-hero flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="relative z-10 flex items-center gap-4">
                     <div className="p-3 rounded-2xl bg-primary-500/20 border border-primary-500/30">
                         <ShieldCheck className="w-7 h-7 text-primary-300" />
                     </div>
@@ -156,7 +156,7 @@ export default function DashboardPage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="relative z-10 flex items-center gap-3">
                     <span className="badge-success">{t(lang, 'الحالة: نشط', 'Status: Active')}</span>
                     <span className="badge-primary">{t(lang, 'الأمان: مستقر', 'Security: Stable')}</span>
                 </div>
@@ -169,15 +169,15 @@ export default function DashboardPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {statsCards.map((stat, index) => (
                     <div
                         key={stat.id}
-                        className="card p-6 animate-slide-up"
+                        className="stat-card animate-slide-up"
                         style={{ animationDelay: `${index * 100}ms` }}
                     >
                         <div className="flex items-start justify-between">
-                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                            <div className="stat-icon">
                                 <stat.icon className="w-6 h-6 text-primary-300" />
                             </div>
                         </div>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                                 )}
                             </p>
                             {stat.progress ? (
-                                <div className="mt-4 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
                                     <div
                                         className="h-full bg-gradient-to-r from-primary-500 to-accent-500"
                                         style={{ width: `${stat.progress}%` }}
@@ -207,7 +207,7 @@ export default function DashboardPage() {
             {/* Revenue & Activity Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Revenue Card */}
-                <div className="card p-6 lg:col-span-2">
+                <div className="card p-6 lg:col-span-2 relative overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">
                             {t(lang, 'الإيرادات الشهرية', 'Monthly Revenue')}
@@ -247,7 +247,7 @@ export default function DashboardPage() {
                             <span>{t(lang, 'لا توجد بيانات للمقارنة مع الشهر الماضي', 'No comparison data for last month')}</span>
                         )}
                     </div>
-                    <div className="mt-6 h-40 rounded-2xl border border-white/5 bg-gradient-to-b from-primary-500/20 via-transparent to-transparent" />
+                    <div className="mt-6 h-40 rounded-2xl border border-white/10 bg-gradient-to-b from-primary-500/20 via-accent-500/5 to-transparent" />
                 </div>
 
                 {/* Today's Activity */}
@@ -256,15 +256,15 @@ export default function DashboardPage() {
                         {t(lang, 'نشاط اليوم', "Today's Activity")}
                     </h2>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile flex items-center justify-between">
                             <span className="text-sm text-white/70">{t(lang, 'تسجيل الوصول', 'Check-ins')}</span>
                             <span className="badge-success">{t(lang, `${stats.todayCheckIns} نزيل`, `${stats.todayCheckIns} guests`)}</span>
                         </div>
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile flex items-center justify-between">
                             <span className="text-sm text-white/70">{t(lang, 'تسجيل المغادرة', 'Check-outs')}</span>
                             <span className="badge-warning">{t(lang, `${stats.todayCheckOuts} نزيل`, `${stats.todayCheckOuts} guests`)}</span>
                         </div>
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="surface-tile flex items-center justify-between">
                             <span className="text-sm text-white/70">{t(lang, 'طلبات خاصة', 'Special requests')}</span>
                             <span className="badge-primary">{t(lang, `${stats.specialRequestsToday}`, `${stats.specialRequestsToday}`)}</span>
                         </div>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                         <a
                             key={action.id}
                             href={action.href}
-                            className="flex flex-col items-center gap-3 p-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-white/5 transition-all duration-200 group"
+                            className="flex flex-col items-center gap-3 p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-primary-500/50 hover:bg-white/5 transition-all duration-200 group"
                         >
                             <action.icon className="w-8 h-8 text-white/50 group-hover:text-primary-300 transition-colors" />
                             <span className="text-sm font-medium text-white/70 group-hover:text-white">
@@ -318,10 +318,7 @@ export default function DashboardPage() {
                 ) : (
                     <div className="space-y-3">
                         {notifications.slice(0, 6).map((item, index) => (
-                            <div
-                                key={`${item.createdAt}-${index}`}
-                                className="p-4 rounded-xl bg-white/5 border border-white/10"
-                            >
+                            <div key={`${item.createdAt}-${index}`} className="surface-tile">
                                 <p className="text-sm text-white/80">{item.message}</p>
                                 <p className="mt-1 text-xs text-white/40">
                                     {formatDateTime(item.createdAt)}

@@ -178,17 +178,22 @@ export default function BookingsPage() {
     }, [filteredBookings, sortBy, sortDir]);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white">
+        <div className="space-y-7">
+            <div className="page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="relative z-10 flex items-center gap-4">
+                    <div className="stat-icon">
+                        <CalendarCheck className="w-6 h-6 text-primary-300" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">
                         {t(lang, 'إدارة الحجوزات', 'Booking Management')}
                     </h1>
                     <p className="mt-1 text-white/60">
                         {t(lang, 'عرض وإدارة جميع الحجوزات ومتابعة المدفوعات', 'View and manage bookings and track payments')}
                     </p>
+                    </div>
                 </div>
-                <Link href="/dashboard/bookings/new" className="btn-primary">
+                <Link href="/dashboard/bookings/new" className="btn-primary relative z-10">
                     <Plus className="w-5 h-5" />
                     <span>{t(lang, 'حجز جديد', 'New booking')}</span>
                 </Link>
@@ -203,8 +208,8 @@ export default function BookingsPage() {
                     { id: 'checkedOut', label: t(lang, 'مغادرة', 'Checked out'), value: stats.checkedOut, icon: LogOut, tone: 'text-white/60' },
                     { id: 'revenue', label: t(lang, 'إجمالي القيمة', 'Total value'), value: formatCurrency(stats.revenue), icon: DollarSign, tone: 'text-success-500' },
                 ].map((item) => (
-                    <div key={item.id} className="card p-4 flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-white/5 border border-white/10">
+                    <div key={item.id} className="stat-card flex items-center gap-3">
+                        <div className="stat-icon">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
                         <div>
@@ -215,7 +220,7 @@ export default function BookingsPage() {
                 ))}
             </div>
 
-            <div className="card p-4">
+            <div className="filter-shell">
                 <div className="flex flex-col xl:flex-row gap-4">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -283,7 +288,7 @@ export default function BookingsPage() {
                                 ? t(lang, 'تصاعدي', 'Ascending')
                                 : t(lang, 'تنازلي', 'Descending')}
                         </button>
-                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('grid')}
@@ -351,9 +356,10 @@ export default function BookingsPage() {
                         return (
                             <div
                                 key={booking._id}
-                                className="card p-5 hover:shadow-card-hover transition-shadow animate-slide-up"
+                                className="card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up"
                                 style={{ animationDelay: `${index * 30}ms` }}
                             >
+                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary-500/0 via-primary-500/70 to-accent-500/0" />
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs text-white/40">{t(lang, 'رقم الحجز', 'Booking #')}</p>
@@ -395,7 +401,7 @@ export default function BookingsPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                                <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
                                     <Link
                                         href={`/dashboard/bookings/${booking._id}`}
                                         className="btn-secondary text-sm"
@@ -412,7 +418,7 @@ export default function BookingsPage() {
                     })}
                 </div>
             ) : (
-                <div className="table-container">
+                <div className="table-container shadow-card">
                     <table className="table">
                         <thead>
                             <tr>
