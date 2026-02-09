@@ -127,7 +127,9 @@ export default function SuperAdminUsersPage() {
     }, []);
 
     const createRoles = useMemo(() => {
-        return currentRole === 'super_admin' ? allCreationRoles : subCreationRoles;
+        // Show the full list by default; restrict only when we are sure
+        // the signed-in account is sub_super_admin.
+        return currentRole === 'sub_super_admin' ? subCreationRoles : allCreationRoles;
     }, [currentRole]);
 
     const onSubmit = async (data: CreateUserInput) => {
