@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
     Plus,
@@ -75,11 +75,7 @@ export default function RoomsPage() {
     const [sortBy, setSortBy] = useState<'roomNumber' | 'price' | 'floor' | 'status'>('roomNumber');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-    useEffect(() => {
-        fetchRooms();
-    }, [statusFilter]);
-
-    const fetchRooms = async () => {
+    const fetchRooms = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -96,7 +92,11 @@ export default function RoomsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [statusFilter]);
+
+    useEffect(() => {
+        fetchRooms();
+    }, [fetchRooms]);
 
     const stats = useMemo(() => {
         const total = rooms.length;

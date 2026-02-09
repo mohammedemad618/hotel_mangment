@@ -4,6 +4,7 @@ import { User } from '@/core/db/models';
 import { verifyPassword, generateTokenPair, setAuthCookies, getPermissionsForRole, hashToken } from '@/core/auth';
 import { loginSchema } from '@/lib/validations';
 import { UserRole } from '@/core/db/models';
+import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
 
 export async function POST(request: NextRequest) {
     try {
@@ -21,6 +22,22 @@ export async function POST(request: NextRequest) {
         }
 
         const { email, password } = validation.data;
+        const clientIp = getClientIp(request);
+        const loginRate = checkRateLimit(`${clientIp}:${email}`, {
+            keyPrefix: 'auth:login',
+            windowMs: 15 * 60 * 1000,
+            max: 10,
+        });
+
+        if (!loginRate.ok) {
+            return NextResponse.json(
+                { error: 'تم تجاوز عدد محاولات تسجيل الدخول، يرجى المحاولة لاحقًا' },
+                {
+                    status: 429,
+                    headers: { 'Retry-After': String(loginRate.retryAfterSec) },
+                }
+            );
+        }
 
         // Find user with password
         const user = await User.findOne({ email, isActive: true })

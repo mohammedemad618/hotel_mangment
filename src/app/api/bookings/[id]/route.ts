@@ -37,7 +37,7 @@ async function getBooking(
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return NextResponse.json(
-                { error: 'معرف الحجز غير صالح' },
+                { error: 'Invalid booking ID' },
                 { status: 400 }
             );
         }
@@ -50,7 +50,7 @@ async function getBooking(
 
         if (!booking) {
             return NextResponse.json(
-                { error: 'الحجز غير موجود' },
+                { error: 'Booking not found' },
                 { status: 404 }
             );
         }
@@ -59,7 +59,7 @@ async function getBooking(
     } catch (error) {
         console.error('Get booking error:', error);
         return NextResponse.json(
-            { error: 'حدث خطأ أثناء جلب بيانات الحجز' },
+            { error: 'Failed to load booking details' },
             { status: 500 }
         );
     }
@@ -78,25 +78,63 @@ async function updateBooking(
         const { id } = await context.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return NextResponse.json(
-                { error: 'معرف الحجز غير صالح' },
+                { error: 'Invalid booking ID' },
                 { status: 400 }
             );
         }
 
-        const body = await request.json();
-        const tenantQuery = createTenantQuery(auth.hotelId!);
-
-        const booking = await Booking.findOne(tenantQuery.filter({ _id: id }));
-        if (!booking) {
+        let body: any;
+        try {
+            body = await request.json();
+        } catch {
             return NextResponse.json(
-                { error: 'الحجز غير موجود' },
-                { status: 404 }
+                { error: 'Invalid JSON body' },
+                { status: 400 }
             );
         }
 
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            return NextResponse.json(
+                { error: 'Invalid request body' },
+                { status: 400 }
+            );
+        }
+
+        const canBookingRead = hasPermission(auth.role, auth.permissions, PERMISSIONS.BOOKING_READ);
         const canBookingUpdate = hasPermission(auth.role, auth.permissions, PERMISSIONS.BOOKING_UPDATE);
         const canPaymentCreate = hasPermission(auth.role, auth.permissions, PERMISSIONS.PAYMENT_CREATE);
         const canPaymentRefund = hasPermission(auth.role, auth.permissions, PERMISSIONS.PAYMENT_REFUND);
+        const canStatusTransition = Array.from(new Set(Object.values(statusPermissionMap)))
+            .some((permission) => hasPermission(auth.role, auth.permissions, permission));
+
+        if (!canBookingUpdate && !canPaymentCreate && !canPaymentRefund && !canStatusTransition) {
+            return NextResponse.json(
+                { error: 'Forbidden - missing update permissions' },
+                { status: 403 }
+            );
+        }
+
+        const hasKnownUpdateField =
+            Object.prototype.hasOwnProperty.call(body, 'notes') ||
+            Object.prototype.hasOwnProperty.call(body, 'specialRequests') ||
+            Object.prototype.hasOwnProperty.call(body, 'status') ||
+            Object.prototype.hasOwnProperty.call(body, 'payment');
+
+        if (!hasKnownUpdateField) {
+            return NextResponse.json(
+                { error: 'No valid update fields provided' },
+                { status: 400 }
+            );
+        }
+
+        const tenantQuery = createTenantQuery(auth.hotelId!);
+        const booking = await Booking.findOne(tenantQuery.filter({ _id: id }));
+        if (!booking) {
+            return NextResponse.json(
+                { error: 'Booking not found' },
+                { status: 404 }
+            );
+        }
 
         const wantsNotesUpdate =
             Object.prototype.hasOwnProperty.call(body, 'notes') ||
@@ -104,12 +142,13 @@ async function updateBooking(
 
         if (wantsNotesUpdate && !canBookingUpdate) {
             return NextResponse.json(
-                { error: 'غير مصرح - لا تملك صلاحية تحديث بيانات الحجز' },
+                { error: 'Forbidden - missing booking update permission' },
                 { status: 403 }
             );
         }
 
         const updates: Record<string, any> = {};
+        let paymentUpdated = false;
 
         if (typeof body.notes === 'string' || body.notes === '') {
             updates.notes = body.notes || undefined;
@@ -124,7 +163,7 @@ async function updateBooking(
             const allowed = allowedStatusTransitions[currentStatus] || [];
             if (!allowed.includes(nextStatus)) {
                 return NextResponse.json(
-                    { error: 'لا يمكن تغيير حالة الحجز إلى الحالة المطلوبة' },
+                    { error: 'Invalid booking status transition' },
                     { status: 400 }
                 );
             }
@@ -132,7 +171,7 @@ async function updateBooking(
             const requiredStatusPermission = statusPermissionMap[nextStatus];
             if (!canBookingUpdate && requiredStatusPermission && !hasPermission(auth.role, auth.permissions, requiredStatusPermission)) {
                 return NextResponse.json(
-                    { error: 'غير مصرح - لا تملك صلاحية تغيير حالة الحجز' },
+                    { error: 'Forbidden - missing status transition permission' },
                     { status: 403 }
                 );
             }
@@ -152,7 +191,14 @@ async function updateBooking(
             }
         }
 
-        if (body.payment) {
+        if (body.payment !== undefined) {
+            if (!body.payment || typeof body.payment !== 'object' || Array.isArray(body.payment)) {
+                return NextResponse.json(
+                    { error: 'Invalid payment payload' },
+                    { status: 400 }
+                );
+            }
+
             const wantsPaymentUpdate =
                 !!body.payment.addPayment ||
                 body.payment.paidAmount !== undefined ||
@@ -160,7 +206,7 @@ async function updateBooking(
 
             if (wantsPaymentUpdate && !canPaymentCreate) {
                 return NextResponse.json(
-                    { error: 'غير مصرح - لا تملك صلاحية تسجيل أو تعديل الدفعات' },
+                    { error: 'Forbidden - missing payment update permission' },
                     { status: 403 }
                 );
             }
@@ -172,13 +218,13 @@ async function updateBooking(
 
                 if (!Number.isFinite(amount) || amount <= 0) {
                     return NextResponse.json(
-                        { error: 'قيمة الدفعة غير صحيحة' },
+                        { error: 'Invalid payment amount' },
                         { status: 400 }
                     );
                 }
                 if (!allowedPaymentMethods.includes(method)) {
                     return NextResponse.json(
-                        { error: 'طريقة الدفع غير صالحة' },
+                        { error: 'Invalid payment method' },
                         { status: 400 }
                     );
                 }
@@ -192,6 +238,7 @@ async function updateBooking(
                     date: new Date(),
                 });
                 booking.payment.paidAmount = (booking.payment.paidAmount || 0) + amount;
+                paymentUpdated = true;
 
                 const total = booking.pricing?.total || 0;
                 if (booking.payment.paidAmount >= total && total > 0) {
@@ -207,30 +254,32 @@ async function updateBooking(
                 const status = String(body.payment.status);
                 if (!allowedPaymentStatuses.includes(status)) {
                     return NextResponse.json(
-                        { error: 'حالة الدفع غير صالحة' },
+                        { error: 'Invalid payment status' },
                         { status: 400 }
                     );
                 }
                 if (status === 'refunded' && !canPaymentRefund) {
                     return NextResponse.json(
-                        { error: 'غير مصرح - لا تملك صلاحية استرداد الدفعات' },
+                        { error: 'Forbidden - missing payment refund permission' },
                         { status: 403 }
                     );
                 }
                 booking.payment = booking.payment || { status: 'pending', paidAmount: 0, transactions: [] } as any;
                 booking.payment.status = status as any;
+                paymentUpdated = true;
             }
 
             if (body.payment.paidAmount !== undefined) {
                 const paidAmount = Number(body.payment.paidAmount);
                 if (!Number.isFinite(paidAmount) || paidAmount < 0) {
                     return NextResponse.json(
-                        { error: 'المبلغ المدفوع غير صالح' },
+                        { error: 'Invalid paid amount' },
                         { status: 400 }
                     );
                 }
                 booking.payment = booking.payment || { status: 'pending', paidAmount: 0, transactions: [] } as any;
                 booking.payment.paidAmount = paidAmount;
+                paymentUpdated = true;
 
                 if (!body.payment.status) {
                     const total = booking.pricing?.total || 0;
@@ -245,11 +294,22 @@ async function updateBooking(
             }
         }
 
+        if (Object.keys(updates).length === 0 && !paymentUpdated) {
+            return NextResponse.json(
+                { error: 'No applicable changes to update' },
+                { status: 400 }
+            );
+        }
+
         Object.keys(updates).forEach((key) => {
             booking.set(key, updates[key]);
         });
 
         await booking.save();
+
+        if (!canBookingRead) {
+            return NextResponse.json({ success: true });
+        }
 
         const updatedBooking = await Booking.findOne(tenantQuery.filter({ _id: id }))
             .populate('roomId', 'roomNumber type floor')
@@ -260,7 +320,7 @@ async function updateBooking(
     } catch (error) {
         console.error('Update booking error:', error);
         return NextResponse.json(
-            { error: 'حدث خطأ أثناء تحديث الحجز' },
+            { error: 'Failed to update booking' },
             { status: 500 }
         );
     }

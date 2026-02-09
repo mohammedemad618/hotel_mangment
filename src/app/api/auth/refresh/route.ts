@@ -11,10 +11,27 @@ import {
     setAuthCookies,
     verifyRefreshToken,
 } from '@/core/auth';
+import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
 
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
+        const clientIp = getClientIp(request);
+        const refreshRate = checkRateLimit(clientIp, {
+            keyPrefix: 'auth:refresh',
+            windowMs: 60 * 1000,
+            max: 30,
+        });
+
+        if (!refreshRate.ok) {
+            return NextResponse.json(
+                { error: 'Too many refresh attempts, try again later' },
+                {
+                    status: 429,
+                    headers: { 'Retry-After': String(refreshRate.retryAfterSec) },
+                }
+            );
+        }
 
         const { refreshToken } = await getTokensFromCookies();
         if (!refreshToken) {

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
 import { Booking, Guest, Room } from '@/core/db/models';
-import { withTenant, AuthContext } from '@/core/middleware/auth';
+import { withPermission, AuthContext } from '@/core/middleware/auth';
+import { PERMISSIONS } from '@/core/auth';
 
 const getDayRange = (date: Date) => {
     const start = new Date(date);
@@ -51,7 +52,7 @@ async function handler(
             Room.countDocuments({ isActive: true, status: 'available' }),
             Room.countDocuments({ isActive: true, status: 'occupied' }),
             Booking.countDocuments({ status: 'pending' }),
-            Guest.countDocuments({ isActive: true }),
+            Guest.countDocuments({}),
             Booking.countDocuments(activeBookingFilter),
             Booking.countDocuments({
                 ...activeBookingFilter,
@@ -114,4 +115,4 @@ async function handler(
     }
 }
 
-export const GET = withTenant(handler);
+export const GET = withPermission(PERMISSIONS.REPORT_VIEW, handler);

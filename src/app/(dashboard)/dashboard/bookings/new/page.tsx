@@ -74,6 +74,7 @@ export default function NewBookingPage() {
 
     useEffect(() => {
         const fetchOptions = async () => {
+            setLoadingOptions(true);
             try {
                 const [roomsRes, guestsRes] = await Promise.all([
                     fetchWithRefresh('/api/rooms?status=available&limit=200'),
@@ -97,7 +98,7 @@ export default function NewBookingPage() {
         };
 
         fetchOptions();
-    }, []);
+    }, [lang]);
 
     const selectedRoomId = watch('roomId');
     const selectedGuestId = watch('guestId');

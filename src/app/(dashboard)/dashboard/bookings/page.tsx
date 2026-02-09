@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
@@ -73,11 +73,7 @@ export default function BookingsPage() {
     const [sortBy, setSortBy] = useState<'checkInDate' | 'checkOutDate' | 'total' | 'createdAt'>('checkInDate');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-    useEffect(() => {
-        fetchBookings();
-    }, [statusFilter, paymentFilter, dateFrom, dateTo]);
-
-    const fetchBookings = async () => {
+    const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -97,7 +93,11 @@ export default function BookingsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [statusFilter, paymentFilter, dateFrom, dateTo]);
+
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
 
     const formatDate = (dateStr: string) => {
         const locale = hotelSettings?.language === 'en' ? 'en-US' : 'ar-SA';

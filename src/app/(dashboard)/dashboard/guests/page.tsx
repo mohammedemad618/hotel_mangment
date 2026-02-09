@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
@@ -67,11 +67,7 @@ export default function GuestsPage() {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    useEffect(() => {
-        fetchGuests();
-    }, [typeFilter, search]);
-
-    const fetchGuests = async () => {
+    const fetchGuests = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -89,7 +85,11 @@ export default function GuestsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [typeFilter, search]);
+
+    useEffect(() => {
+        fetchGuests();
+    }, [fetchGuests]);
 
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return '-';

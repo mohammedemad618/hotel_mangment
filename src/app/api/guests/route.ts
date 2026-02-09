@@ -5,6 +5,7 @@ import { withPermission, AuthContext } from '@/core/middleware/auth';
 import { PERMISSIONS } from '@/core/auth';
 import { createGuestSchema } from '@/lib/validations';
 import { createTenantQuery } from '@/core/db/tenantMiddleware';
+import { escapeRegex, normalizeSearchTerm } from '@/core/security/input';
 import mongoose from 'mongoose';
 
 // GET: List guests
@@ -19,19 +20,20 @@ async function listGuests(
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
-        const search = searchParams.get('search');
+        const search = normalizeSearchTerm(searchParams.get('search'));
         const guestType = searchParams.get('guestType');
 
         const tenantQuery = createTenantQuery(auth.hotelId!);
         const filter: Record<string, any> = tenantQuery.filter({});
 
         if (search) {
+            const safeSearch = escapeRegex(search);
             filter.$or = [
-                { firstName: { $regex: search, $options: 'i' } },
-                { lastName: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } },
-                { idNumber: { $regex: search, $options: 'i' } },
+                { firstName: { $regex: safeSearch, $options: 'i' } },
+                { lastName: { $regex: safeSearch, $options: 'i' } },
+                { phone: { $regex: safeSearch, $options: 'i' } },
+                { email: { $regex: safeSearch, $options: 'i' } },
+                { idNumber: { $regex: safeSearch, $options: 'i' } },
             ];
         }
 

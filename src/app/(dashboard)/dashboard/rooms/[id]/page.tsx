@@ -132,7 +132,7 @@ export default function RoomDetailsPage() {
         };
 
         fetchRoom();
-    }, [id]);
+    }, [id, lang]);
 
     const formatCurrency = (amount: number) => {
         const locale = hotelSettings?.language === 'en' ? 'en-US' : 'ar-SA';

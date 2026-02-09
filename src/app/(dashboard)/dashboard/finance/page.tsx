@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Wallet,
     TrendingUp,
@@ -120,15 +120,7 @@ export default function FinancePage() {
         method: '',
     });
 
-    useEffect(() => {
-        fetchFinance();
-    }, []);
-
-    useEffect(() => {
-        fetchTransactions();
-    }, [filters, page]);
-
-    const fetchFinance = async () => {
+    const fetchFinance = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -144,9 +136,9 @@ export default function FinancePage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [lang]);
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async () => {
         setTransactionsLoading(true);
         setTransactionsError(null);
         try {
@@ -174,7 +166,15 @@ export default function FinancePage() {
         } finally {
             setTransactionsLoading(false);
         }
-    };
+    }, [filters.fromDate, filters.toDate, filters.status, filters.method, page, lang]);
+
+    useEffect(() => {
+        fetchFinance();
+    }, [fetchFinance]);
+
+    useEffect(() => {
+        fetchTransactions();
+    }, [fetchTransactions]);
 
     const refreshAll = async () => {
         await Promise.allSettled([fetchFinance(), fetchTransactions()]);

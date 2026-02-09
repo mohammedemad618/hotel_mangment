@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
@@ -131,7 +132,7 @@ export default function BookingDetailsPage() {
         };
 
         fetchBooking();
-    }, [id]);
+    }, [id, lang]);
 
     useEffect(() => {
         if (booking) {
@@ -699,9 +700,12 @@ export default function BookingDetailsPage() {
                     <div className="receipt-header">
                         <div className="receipt-brand">
                             {hotelProfile?.logo && (
-                                <img
+                                <Image
                                     src={hotelProfile.logo}
-                                    alt={t(lang, 'شعار الفندق', 'Hotel logo')}
+                                    alt="Hotel logo"
+                                    width={72}
+                                    height={72}
+                                    unoptimized
                                     className="receipt-logo"
                                 />
                             )}

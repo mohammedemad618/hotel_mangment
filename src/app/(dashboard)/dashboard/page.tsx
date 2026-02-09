@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     BedDouble,
     CalendarCheck,
@@ -51,11 +51,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchStats();
-    }, []);
-
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -73,7 +69,11 @@ export default function DashboardPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [lang]);
+
+    useEffect(() => {
+        fetchStats();
+    }, [fetchStats]);
 
     const percentOf = (value: number, total: number) => (
         total > 0 ? Math.round((value / total) * 100) : 0

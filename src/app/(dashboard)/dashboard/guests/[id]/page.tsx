@@ -133,7 +133,7 @@ export default function GuestDetailsPage() {
         };
 
         fetchGuest();
-    }, [id]);
+    }, [id, lang]);
 
     useEffect(() => {
         if (!guest) return;

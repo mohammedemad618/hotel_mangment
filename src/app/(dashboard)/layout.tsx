@@ -125,6 +125,8 @@ export default function DashboardLayout({
     const [notifications, setNotifications] = useState<HotelNotification[]>([]);
     const [hotelProfile, setHotelProfile] = useState<HotelProfile | null>(null);
     const lang = normalizeLanguage(settings?.language);
+    const language = settings?.language;
+    const theme = settings?.theme;
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -174,20 +176,20 @@ export default function DashboardLayout({
     }, [router]);
 
     useEffect(() => {
-        if (!settings) {
+        if (!language) {
             return;
         }
 
         const root = document.documentElement;
-        root.lang = settings.language === 'en' ? 'en' : 'ar';
-        root.dir = settings.language === 'en' ? 'ltr' : 'rtl';
+        root.lang = language === 'en' ? 'en' : 'ar';
+        root.dir = language === 'en' ? 'ltr' : 'rtl';
 
         const applyTheme = (theme: 'light' | 'dark') => {
             root.classList.remove('light', 'dark');
             root.classList.add(theme);
         };
 
-        if (settings.theme === 'system') {
+        if (theme === 'system') {
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             const syncTheme = () => applyTheme(mediaQuery.matches ? 'dark' : 'light');
             syncTheme();
@@ -195,8 +197,8 @@ export default function DashboardLayout({
             return () => mediaQuery.removeEventListener('change', syncTheme);
         }
 
-        applyTheme(settings.theme || 'dark');
-    }, [settings?.language, settings?.theme]);
+        applyTheme(theme === 'light' || theme === 'dark' ? theme : 'dark');
+    }, [language, theme]);
 
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });

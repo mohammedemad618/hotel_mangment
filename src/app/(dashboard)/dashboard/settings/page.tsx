@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import {
     Building2,
     Globe,
@@ -47,7 +48,7 @@ export default function SettingsPage() {
     const [initialSettings, setInitialSettings] = useState(defaultSettings);
     const lang = normalizeLanguage(settings.language);
 
-    const toLayoutSettings = (data: typeof defaultSettings): HotelSettings => ({
+    const toLayoutSettings = useCallback((data: typeof defaultSettings): HotelSettings => ({
         currency: data.currency,
         timezone: data.timezone,
         language: normalizeLanguage(data.language),
@@ -56,9 +57,9 @@ export default function SettingsPage() {
         taxRate: Number(data.taxRate) || 0,
         theme: data.theme,
         notifications: data.notifications,
-    });
+    }), []);
 
-    const normalizeSettings = (hotel?: any) => {
+    const normalizeSettings = useCallback((hotel?: any) => {
         const hotelSettings = hotel?.settings || {};
         return {
             hotelName: hotel?.name || defaultSettings.hotelName,
@@ -77,7 +78,7 @@ export default function SettingsPage() {
                 ...(hotelSettings.notifications || {}),
             },
         };
-    };
+    }, [defaultSettings]);
 
     const handleLogoChange = (file: File | null) => {
         if (!file) return;
@@ -150,40 +151,40 @@ export default function SettingsPage() {
         }
     };
 
-    useEffect(() => {
-        const loadSettings = async () => {
-            setIsLoading(true);
-            setError(null);
+    const loadSettings = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
 
-            try {
-                const response = await fetchWithRefresh('/api/auth/me');
-                const data = await response.json();
+        try {
+            const response = await fetchWithRefresh('/api/auth/me');
+            const data = await response.json();
 
-                if (!response.ok) {
-                    setError(data.error || t(lang, 'تعذر جلب الإعدادات', 'Failed to load settings'));
-                    return;
-                }
-
-                const normalized = normalizeSettings(data.user?.hotel);
-                setSettings(normalized);
-                setInitialSettings(normalized);
-                setLayoutSettings(toLayoutSettings(normalized));
-                setHotelProfile({
-                    name: data.user?.hotel?.name,
-                    email: data.user?.hotel?.email,
-                    phone: data.user?.hotel?.phone,
-                    logo: data.user?.hotel?.logo,
-                    address: data.user?.hotel?.address,
-                });
-            } catch (err) {
-                setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
-            } finally {
-                setIsLoading(false);
+            if (!response.ok) {
+                setError(data.error || t(lang, 'Failed to load settings', 'Failed to load settings'));
+                return;
             }
-        };
 
+            const normalized = normalizeSettings(data.user?.hotel);
+            setSettings(normalized);
+            setInitialSettings(normalized);
+            setLayoutSettings(toLayoutSettings(normalized));
+            setHotelProfile({
+                name: data.user?.hotel?.name,
+                email: data.user?.hotel?.email,
+                phone: data.user?.hotel?.phone,
+                logo: data.user?.hotel?.logo,
+                address: data.user?.hotel?.address,
+            });
+        } catch (err) {
+            setError(t(lang, 'Network error while contacting the server', 'Network error while contacting the server'));
+        } finally {
+            setIsLoading(false);
+        }
+    }, [lang, normalizeSettings, setLayoutSettings, setHotelProfile, toLayoutSettings]);
+
+    useEffect(() => {
         loadSettings();
-    }, []);
+    }, [loadSettings]);
 
     const hasChanges = useMemo(
         () => JSON.stringify(settings) !== JSON.stringify(initialSettings),
@@ -322,9 +323,12 @@ export default function SettingsPage() {
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         {settings.logo ? (
-                                                            <img
+                                                            <Image
                                                                 src={settings.logo}
-                                                                alt={t(lang, 'شعار الفندق', 'Hotel logo')}
+                                                                alt="Hotel logo"
+                                                                width={80}
+                                                                height={80}
+                                                                unoptimized
                                                                 className="w-20 h-20 rounded-xl object-contain border border-white/10 bg-white/5 p-2"
                                                             />
                                                         ) : (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     AlertCircle,
     BarChart3,
@@ -36,20 +36,6 @@ interface FinanceSummary {
     refundedBookings: number;
 }
 
-interface FinanceTransaction {
-    bookingId: string;
-    bookingNumber: string;
-    roomNumber: string;
-    guestName: string;
-    total: number;
-    paidAmount: number;
-    remaining: number;
-    latestAmount: number;
-    method: string;
-    date: string;
-    status: string;
-}
-
 interface TrendsResponse {
     data?: FinanceTrend[];
     error?: string;
@@ -58,14 +44,6 @@ interface TrendsResponse {
 interface OverviewResponse {
     data?: {
         summary?: FinanceSummary;
-    };
-    error?: string;
-}
-
-interface TransactionsResponse {
-    data?: FinanceTransaction[];
-    pagination?: {
-        pages?: number;
     };
     error?: string;
 }
@@ -89,13 +67,6 @@ const statusLabels: Record<string, { label: { ar: string; en: string }; tone: st
     refunded: { label: { ar: 'مسترد', en: 'Refunded' }, tone: 'badge-danger' },
 };
 
-const paymentMethodLabels: Record<string, { ar: string; en: string }> = {
-    cash: { ar: 'نقدي', en: 'Cash' },
-    card: { ar: 'بطاقة', en: 'Card' },
-    bank_transfer: { ar: 'تحويل بنكي', en: 'Bank transfer' },
-    online: { ar: 'أونلاين', en: 'Online' },
-};
-
 export default function ReportsPage() {
     const { settings: hotelSettings } = useHotelSettings();
     const lang = normalizeLanguage(hotelSettings?.language);
@@ -109,11 +80,7 @@ export default function ReportsPage() {
     const [exportLoading, setExportLoading] = useState(false);
     const [exportError, setExportError] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchReports(months);
-    }, [months]);
-
-    const fetchReports = async (monthsValue: number) => {
+    const fetchReports = useCallback(async (monthsValue: number) => {
         setLoading(true);
         setError(null);
         try {
@@ -143,7 +110,11 @@ export default function ReportsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [lang]);
+
+    useEffect(() => {
+        fetchReports(months);
+    }, [fetchReports, months]);
 
     const formatCurrency = (amount: number) => {
         const locale = hotelSettings?.language === 'en' ? 'en-US' : 'ar-SA';
@@ -153,16 +124,6 @@ export default function ReportsPage() {
             currency,
             minimumFractionDigits: 0,
         }).format(amount);
-    };
-
-    const formatDateTime = (dateStr: string) => {
-        const locale = hotelSettings?.language === 'en' ? 'en-US' : 'ar-SA';
-        const timeZone = hotelSettings?.timezone || 'Asia/Riyadh';
-        return new Date(dateStr).toLocaleString(locale, {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-            timeZone,
-        });
     };
 
     const formatMonthLabel = (monthKey: string) => {
@@ -201,117 +162,53 @@ export default function ReportsPage() {
         const percent = Math.round((diff / summary.lastMonthRevenue) * 100);
         return { isUp: diff >= 0, percent: Math.abs(percent) };
     }, [summary.monthRevenue, summary.lastMonthRevenue]);
-
-    const fetchTransactionsForExport = async () => {
-        const all: FinanceTransaction[] = [];
-        let page = 1;
-        let pages = 1;
-        do {
-            const params = new URLSearchParams();
-            params.set('page', String(page));
-            params.set('limit', '50');
-            if (exportFromDate) params.set('fromDate', exportFromDate);
-            if (exportToDate) params.set('toDate', exportToDate);
-
-            const response = await fetchWithRefresh(`/api/finance/transactions?${params.toString()}`);
-            const result = await response.json() as TransactionsResponse;
-            if (!response.ok) {
-                throw new Error(result.error || t(lang, 'تعذر تحميل بيانات التصدير', 'Failed to load export data'));
-            }
-            all.push(...(Array.isArray(result.data) ? result.data : []));
-            pages = Math.max(result.pagination?.pages || 1, 1);
-            page += 1;
-        } while (page <= pages);
-        return all;
-    };
-
     const exportExcel = async () => {
         if (exportFromDate && exportToDate && exportFromDate > exportToDate) {
-            setExportError(t(lang, 'تاريخ البداية يجب أن يسبق تاريخ النهاية', 'From date must be before to date'));
+            setExportError(t(lang, 'Start date must be before end date', 'From date must be before to date'));
             return;
         }
 
         setExportLoading(true);
         setExportError(null);
         try {
-            const transactions = await fetchTransactionsForExport();
-            if (transactions.length === 0) {
-                setExportError(t(lang, 'لا توجد بيانات ضمن الفترة المحددة', 'No data found for selected range'));
-                return;
-            }
-            const XLSX = await import('xlsx');
+            const params = new URLSearchParams();
+            if (exportFromDate) params.set('fromDate', exportFromDate);
+            if (exportToDate) params.set('toDate', exportToDate);
+            params.set('lang', lang);
 
-            const headers = lang === 'en'
-                ? ['Booking #', 'Guest', 'Room', 'Booking Total', 'Paid', 'Remaining', 'Latest Payment', 'Method', 'Transaction Date', 'Status']
-                : ['رقم الحجز', 'النزيل', 'الغرفة', 'إجمالي الحجز', 'المدفوع', 'المتبقي', 'آخر دفعة', 'طريقة الدفع', 'تاريخ العملية', 'الحالة'];
-
-            const rows = transactions.map((tx) => [
-                tx.bookingNumber,
-                tx.guestName || '-',
-                tx.roomNumber || '-',
-                tx.total || 0,
-                tx.paidAmount || 0,
-                tx.remaining || 0,
-                tx.latestAmount || 0,
-                paymentMethodLabels[tx.method]?.[lang] || tx.method || '-',
-                new Date(tx.date),
-                statusLabels[tx.status]?.label[lang] || t(lang, 'معلق', 'Pending'),
-            ]);
-
-            const detailsSheet = XLSX.utils.aoa_to_sheet([headers, ...rows], { cellDates: true });
-            detailsSheet['!cols'] = [
-                { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
-                { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 14 },
-            ];
-            detailsSheet['!autofilter'] = { ref: 'A1:J1' };
-
-            for (let r = 2; r <= rows.length + 1; r += 1) {
-                ['D', 'E', 'F', 'G'].forEach((col) => {
-                    const ref = `${col}${r}`;
-                    if (detailsSheet[ref]) detailsSheet[ref].z = '#,##0.00';
-                });
-                if (detailsSheet[`I${r}`]) detailsSheet[`I${r}`].z = 'yyyy-mm-dd hh:mm';
+            const response = await fetchWithRefresh(`/api/finance/export?${params.toString()}`);
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({ error: '' })) as { error?: string };
+                throw new Error(result.error || t(lang, 'Unable to prepare export data', 'Failed to load export data'));
             }
 
-            const totals = transactions.reduce(
-                (acc, tx) => {
-                    acc.total += tx.total || 0;
-                    acc.paid += tx.paidAmount || 0;
-                    acc.remaining += tx.remaining || 0;
-                    return acc;
-                },
-                { total: 0, paid: 0, remaining: 0 }
-            );
+            const blob = await response.blob();
+            if (!blob.size) {
+                throw new Error(t(lang, 'No records found in selected range', 'No data found for selected range'));
+            }
 
-            const summaryRows = [
-                [t(lang, 'البيان', 'Metric'), t(lang, 'القيمة', 'Value')],
-                [t(lang, 'من تاريخ', 'From date'), exportFromDate || t(lang, 'الكل', 'All')],
-                [t(lang, 'إلى تاريخ', 'To date'), exportToDate || t(lang, 'الكل', 'All')],
-                [t(lang, 'وقت التصدير', 'Exported at'), formatDateTime(new Date().toISOString())],
-                [t(lang, 'عدد السجلات', 'Records count'), transactions.length],
-                [t(lang, 'إجمالي الحجز', 'Total amount'), totals.total],
-                [t(lang, 'إجمالي المدفوع', 'Total paid'), totals.paid],
-                [t(lang, 'إجمالي المتبقي', 'Total remaining'), totals.remaining],
-                [t(lang, 'العملة', 'Currency'), hotelSettings?.currency || 'SAR'],
-            ];
-            const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-            summarySheet['!cols'] = [{ wch: 28 }, { wch: 32 }];
-            ['B6', 'B7', 'B8'].forEach((ref) => {
-                if (summarySheet[ref]) summarySheet[ref].z = '#,##0.00';
-            });
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, summarySheet, lang === 'en' ? 'Summary' : 'ملخص');
-            XLSX.utils.book_append_sheet(wb, detailsSheet, lang === 'en' ? 'Transactions' : 'العمليات');
-
+            const disposition = response.headers.get('content-disposition') || '';
+            const filenameMatch = disposition.match(/filename\*?=(?:UTF-8''|"?)([^";]+)/i);
             const fromPart = exportFromDate || 'all';
             const toPart = exportToDate || 'all';
-            XLSX.writeFile(wb, `finance-report-${fromPart}-to-${toPart}.xlsx`);
+            const fallbackName = `finance-report-${fromPart}-to-${toPart}.xlsx`;
+            const filename = filenameMatch?.[1]
+                ? decodeURIComponent(filenameMatch[1].replace(/"/g, ''))
+                : fallbackName;
+
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
         } catch (err) {
             setExportError(
                 err instanceof Error
                     ? err.message
-                    : t(lang, 'حدث خطأ أثناء إنشاء الملف', 'Failed to generate file')
+                    : t(lang, 'Failed to generate export file', 'Failed to generate file')
             );
         } finally {
             setExportLoading(false);
