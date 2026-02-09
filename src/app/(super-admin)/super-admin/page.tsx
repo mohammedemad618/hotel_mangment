@@ -16,6 +16,7 @@ import {
     ArrowUpDown,
 } from 'lucide-react';
 import { registerHotelSchema, RegisterHotelInput } from '@/lib/validations';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 
 interface HotelItem {
     _id: string;
@@ -40,25 +41,6 @@ export default function SuperAdminPage() {
     const [planFilter, setPlanFilter] = useState<'all' | 'free' | 'basic' | 'premium' | 'enterprise'>('all');
     const [sortBy, setSortBy] = useState<'createdAt' | 'name'>('createdAt');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const {
         register,

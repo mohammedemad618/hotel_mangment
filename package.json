@@ -3,12 +3,13 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "predev": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
+        "predev": "node -e \"require('fs').rmSync('.next-dev',{recursive:true,force:true})\"",
         "dev": "next dev",
         "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
         "build": "next build",
         "start": "next start",
         "lint": "next lint",
+        "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});require('fs').rmSync('.next-dev',{recursive:true,force:true})\"",
         "seed": "npx tsx scripts/seed.ts"
     },
     "dependencies": {

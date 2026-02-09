@@ -13,6 +13,7 @@ import {
     User,
     Search,
 } from 'lucide-react';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 
 interface UserData {
     id: string;
@@ -36,25 +37,6 @@ export default function SuperAdminLayout({
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     useEffect(() => {
         const fetchUser = async () => {

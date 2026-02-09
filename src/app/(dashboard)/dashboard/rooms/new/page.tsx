@@ -10,49 +10,43 @@ import {
     Loader2,
     BedDouble,
     DollarSign,
-    Users,
     Hash,
     Building2,
 } from 'lucide-react';
+import { useHotelSettings } from '@/app/(dashboard)/layout';
 import { createRoomSchema, CreateRoomInput } from '@/lib/validations';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 const roomTypes = [
-    { value: 'single', label: 'مفردة', description: 'غرفة بسرير مفرد' },
-    { value: 'double', label: 'مزدوجة', description: 'غرفة بسرير مزدوج' },
-    { value: 'twin', label: 'توأم', description: 'غرفة بسريرين منفصلين' },
-    { value: 'suite', label: 'جناح', description: 'جناح فاخر مع غرفة معيشة' },
-    { value: 'deluxe', label: 'فاخرة', description: 'غرفة فاخرة مع إطلالة' },
-    { value: 'presidential', label: 'رئاسية', description: 'الجناح الرئاسي' },
+    { value: 'single', label: { ar: 'مفردة', en: 'Single' }, description: { ar: 'غرفة بسرير مفرد', en: 'Single bed room' } },
+    { value: 'double', label: { ar: 'مزدوجة', en: 'Double' }, description: { ar: 'غرفة بسرير مزدوج', en: 'Double bed room' } },
+    { value: 'twin', label: { ar: 'توأم', en: 'Twin' }, description: { ar: 'غرفة بسريرين منفصلين', en: 'Two separate beds' } },
+    { value: 'suite', label: { ar: 'جناح', en: 'Suite' }, description: { ar: 'جناح فاخر مع غرفة معيشة', en: 'Premium suite with living area' } },
+    { value: 'deluxe', label: { ar: 'فاخرة', en: 'Deluxe' }, description: { ar: 'غرفة فاخرة مع إطلالة', en: 'Deluxe room with a view' } },
+    { value: 'presidential', label: { ar: 'رئاسية', en: 'Presidential' }, description: { ar: 'الجناح الرئاسي', en: 'Presidential suite' } },
 ];
 
 const amenitiesList = [
-    'تكييف', 'واي فاي', 'تلفزيون', 'ميني بار', 'خزنة', 'بلكونة',
-    'جاكوزي', 'مطبخ صغير', 'غرفة معيشة', 'إطلالة بحرية', 'إطلالة حديقة',
+    { value: 'تكييف', label: { ar: 'تكييف', en: 'AC' } },
+    { value: 'واي فاي', label: { ar: 'واي فاي', en: 'Wi-Fi' } },
+    { value: 'تلفزيون', label: { ar: 'تلفزيون', en: 'TV' } },
+    { value: 'ميني بار', label: { ar: 'ميني بار', en: 'Mini bar' } },
+    { value: 'خزنة', label: { ar: 'خزنة', en: 'Safe' } },
+    { value: 'بلكونة', label: { ar: 'بلكونة', en: 'Balcony' } },
+    { value: 'جاكوزي', label: { ar: 'جاكوزي', en: 'Jacuzzi' } },
+    { value: 'مطبخ صغير', label: { ar: 'مطبخ صغير', en: 'Kitchenette' } },
+    { value: 'غرفة معيشة', label: { ar: 'غرفة معيشة', en: 'Living room' } },
+    { value: 'إطلالة بحرية', label: { ar: 'إطلالة بحرية', en: 'Sea view' } },
+    { value: 'إطلالة حديقة', label: { ar: 'إطلالة حديقة', en: 'Garden view' } },
 ];
 
 export default function NewRoomPage() {
     const router = useRouter();
+    const { settings: hotelSettings } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const [error, setError] = useState<string | null>(null);
     const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const {
         register,
@@ -89,14 +83,14 @@ export default function NewRoomPage() {
             const result = await response.json();
 
             if (!response.ok) {
-                setError(result.error || 'حدث خطأ أثناء إنشاء الغرفة');
+                setError(result.error || t(lang, 'حدث خطأ أثناء إنشاء الغرفة', 'Failed to create the room'));
                 return;
             }
 
             router.push('/dashboard/rooms');
 
         } catch (err) {
-            setError('حدث خطأ في الاتصال بالخادم');
+            setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         }
     };
 
@@ -112,10 +106,10 @@ export default function NewRoomPage() {
                 </button>
                 <div>
                     <h1 className="text-2xl font-bold text-white">
-                        إضافة غرفة جديدة
+                        {t(lang, 'إضافة غرفة جديدة', 'Add New Room')}
                     </h1>
                     <p className="mt-1 text-white/60">
-                        أدخل بيانات الغرفة الجديدة
+                        {t(lang, 'أدخل بيانات الغرفة الجديدة', 'Enter the room details')}
                     </p>
                 </div>
             </div>
@@ -132,14 +126,14 @@ export default function NewRoomPage() {
                 <div className="card p-6 space-y-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <BedDouble className="w-5 h-5 text-primary-300" />
-                        معلومات الغرفة
+                        {t(lang, 'معلومات الغرفة', 'Room Information')}
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Room Number */}
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                رقم الغرفة *
+                                {t(lang, 'رقم الغرفة *', 'Room number *')}
                             </label>
                             <div className="relative">
                                 <Hash className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -157,7 +151,7 @@ export default function NewRoomPage() {
                         {/* Floor */}
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                الطابق *
+                                {t(lang, 'الطابق *', 'Floor *')}
                             </label>
                             <div className="relative">
                                 <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -177,7 +171,11 @@ export default function NewRoomPage() {
                         {/* Price */}
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                السعر لليلة (ريال) *
+                                {t(
+                                    lang,
+                                    `السعر لليلة (${hotelSettings?.currency || 'SAR'}) *`,
+                                    `Price per night (${hotelSettings?.currency || 'SAR'}) *`
+                                )}
                             </label>
                             <div className="relative">
                                 <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -198,7 +196,7 @@ export default function NewRoomPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                    البالغين
+                                    {t(lang, 'البالغين', 'Adults')}
                                 </label>
                                 <input
                                     type="number"
@@ -210,7 +208,7 @@ export default function NewRoomPage() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                    الأطفال
+                                    {t(lang, 'الأطفال', 'Children')}
                                 </label>
                                 <input
                                     type="number"
@@ -226,7 +224,7 @@ export default function NewRoomPage() {
                     {/* Room Type */}
                     <div>
                         <label className="block text-sm font-medium text-white/70 mb-3">
-                            نوع الغرفة *
+                            {t(lang, 'نوع الغرفة *', 'Room type *')}
                         </label>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {roomTypes.map((type) => (
@@ -242,10 +240,10 @@ export default function NewRoomPage() {
                                     />
                                     <div className="flex flex-col">
                                         <span className="font-medium text-white">
-                                            {type.label}
+                                            {type.label[lang]}
                                         </span>
                                         <span className="text-xs text-white/50 mt-1">
-                                            {type.description}
+                                            {type.description[lang]}
                                         </span>
                                     </div>
                                 </label>
@@ -259,12 +257,12 @@ export default function NewRoomPage() {
                     {/* Description */}
                     <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                            الوصف
+                            {t(lang, 'الوصف', 'Description')}
                         </label>
                         <textarea
                             {...register('description')}
                             className="input min-h-[100px]"
-                            placeholder="وصف مختصر للغرفة..."
+                            placeholder={t(lang, 'وصف مختصر للغرفة...', 'Short room description...')}
                         />
                     </div>
                 </div>
@@ -272,20 +270,20 @@ export default function NewRoomPage() {
                 {/* Amenities */}
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-white mb-4">
-                        المرافق والخدمات
+                        {t(lang, 'المرافق والخدمات', 'Amenities')}
                     </h2>
                     <div className="flex flex-wrap gap-2">
                         {amenitiesList.map((amenity) => (
                             <button
-                                key={amenity}
+                                key={amenity.value}
                                 type="button"
-                                onClick={() => toggleAmenity(amenity)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedAmenities.includes(amenity)
+                                onClick={() => toggleAmenity(amenity.value)}
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedAmenities.includes(amenity.value)
                                         ? 'bg-primary-500/80 text-white'
                                         : 'bg-white/5 text-white/70 hover:bg-white/10'
                                     }`}
                             >
-                                {amenity}
+                                {amenity.label[lang]}
                             </button>
                         ))}
                     </div>
@@ -298,7 +296,7 @@ export default function NewRoomPage() {
                         onClick={() => router.back()}
                         className="btn-secondary"
                     >
-                        إلغاء
+                        {t(lang, 'إلغاء', 'Cancel')}
                     </button>
                     <button
                         type="submit"
@@ -310,7 +308,7 @@ export default function NewRoomPage() {
                         ) : (
                             <>
                                 <Save className="w-5 h-5" />
-                                <span>حفظ الغرفة</span>
+                                <span>{t(lang, 'حفظ الغرفة', 'Save Room')}</span>
                             </>
                         )}
                     </button>

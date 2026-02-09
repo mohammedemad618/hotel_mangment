@@ -4,6 +4,8 @@ import { Booking } from '@/core/db/models';
 import { withPermission, AuthContext } from '@/core/middleware/auth';
 import { PERMISSIONS } from '@/core/auth';
 
+const lastArrayItemExpr = (path: string) => ({ $arrayElemAt: [path, -1] });
+
 const toDateEnd = (value: string) => {
     const date = new Date(value);
     if (!Number.isFinite(date.getTime())) return null;
@@ -35,37 +37,39 @@ async function handler(
             filter['payment.status'] = status;
         }
 
+        const exprConditions: any[] = [];
+        const lastTransactionDateExpr = lastArrayItemExpr('$payment.transactions.date');
+        const effectiveDateExpr = { $ifNull: [lastTransactionDateExpr, '$updatedAt'] };
+        const lastTransactionMethodExpr = lastArrayItemExpr('$payment.transactions.method');
+        const effectiveMethodExpr = {
+            $ifNull: [lastTransactionMethodExpr, { $ifNull: ['$payment.method', 'cash'] }],
+        };
+
         if (method) {
-            filter.$or = [
-                { 'payment.method': method },
-                { 'payment.transactions.method': method },
-            ];
+            exprConditions.push({ $eq: [effectiveMethodExpr, method] });
         }
 
         if (fromDate || toDate) {
-            const range: Record<string, Date> = {};
-            if (fromDate) {
-                const from = new Date(fromDate);
-                if (Number.isFinite(from.getTime())) {
-                    range.$gte = from;
-                }
+            const from = fromDate ? new Date(fromDate) : null;
+            if (from && Number.isFinite(from.getTime())) {
+                exprConditions.push({ $gte: [effectiveDateExpr, from] });
             }
-            if (toDate) {
-                const to = toDateEnd(toDate);
-                if (to) {
-                    range.$lte = to;
-                }
+
+            const to = toDate ? toDateEnd(toDate) : null;
+            if (to) {
+                exprConditions.push({ $lte: [effectiveDateExpr, to] });
             }
-            if (Object.keys(range).length > 0) {
-                filter.createdAt = range;
-            }
+        }
+
+        if (exprConditions.length > 0) {
+            filter.$expr = exprConditions.length === 1 ? exprConditions[0] : { $and: exprConditions };
         }
 
         const [bookings, total, summaryAgg] = await Promise.all([
             Booking.find(filter)
                 .populate('roomId', 'roomNumber')
                 .populate('guestId', 'firstName lastName')
-                .sort({ createdAt: -1 })
+                .sort({ updatedAt: -1 })
                 .skip((page - 1) * limit)
                 .limit(limit)
                 .lean(),

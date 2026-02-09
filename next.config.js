@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const baseConfig = {
     reactStrictMode: true,
-    output: 'standalone',
     experimental: {
         serverActions: {
             bodySizeLimit: '2mb',
@@ -17,4 +16,16 @@ const nextConfig = {
     },
 };
 
-module.exports = nextConfig;
+const { PHASE_DEVELOPMENT_SERVER } = require('next/constants');
+
+module.exports = (phase) => {
+    const isDev = phase === PHASE_DEVELOPMENT_SERVER;
+
+    return {
+        ...baseConfig,
+        // Keep dev and prod build artifacts isolated. This prevents cases where `next build`
+        // (or cleaning `.next`) breaks a running `next dev` instance.
+        distDir: isDev ? '.next-dev' : '.next',
+        ...(isDev ? {} : { output: 'standalone' }),
+    };
+};

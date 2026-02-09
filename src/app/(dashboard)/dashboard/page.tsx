@@ -13,6 +13,8 @@ import {
     Bell,
 } from 'lucide-react';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 interface DashboardStats {
     totalRooms: number;
@@ -44,6 +46,7 @@ const defaultStats: DashboardStats = {
 
 export default function DashboardPage() {
     const { settings: hotelSettings, notifications } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const [stats, setStats] = useState<DashboardStats>(defaultStats);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -51,25 +54,6 @@ export default function DashboardPage() {
     useEffect(() => {
         fetchStats();
     }, []);
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const fetchStats = async () => {
         setLoading(true);
@@ -79,13 +63,13 @@ export default function DashboardPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.error || 'حدث خطأ أثناء جلب بيانات لوحة التحكم');
+                setError(data.error || t(lang, 'حدث خطأ أثناء جلب بيانات لوحة التحكم', 'Failed to load dashboard data'));
                 return;
             }
 
             setStats(data.data);
         } catch (err) {
-            setError('حدث خطأ في الاتصال بالخادم');
+            setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setLoading(false);
         }
@@ -101,7 +85,8 @@ export default function DashboardPage() {
 
     const statsCards = [
         {
-            title: 'الغرف المتاحة',
+            id: 'availableRooms',
+            title: t(lang, 'الغرف المتاحة', 'Available Rooms'),
             value: stats.availableRooms,
             total: stats.totalRooms,
             icon: BedDouble,
@@ -109,7 +94,8 @@ export default function DashboardPage() {
             progress: availableRate,
         },
         {
-            title: 'الغرف المشغولة',
+            id: 'occupiedRooms',
+            title: t(lang, 'الغرف المشغولة', 'Occupied Rooms'),
             value: stats.occupiedRooms,
             total: stats.totalRooms,
             icon: BedDouble,
@@ -117,14 +103,16 @@ export default function DashboardPage() {
             progress: occupiedRate,
         },
         {
-            title: 'الحجوزات المعلقة',
+            id: 'pendingBookings',
+            title: t(lang, 'الحجوزات المعلقة', 'Pending Bookings'),
             value: stats.pendingBookings,
             icon: CalendarCheck,
             color: 'bg-warning-500',
             progress: pendingRate,
         },
         {
-            title: 'إجمالي النزلاء',
+            id: 'totalGuests',
+            title: t(lang, 'إجمالي النزلاء', 'Total Guests'),
             value: stats.totalGuests,
             icon: Users,
             color: 'bg-accent-500',
@@ -161,16 +149,16 @@ export default function DashboardPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                            لوحة التحكم التنفيذية
+                            {t(lang, 'لوحة التحكم التنفيذية', 'Executive Dashboard')}
                         </h1>
                         <p className="mt-1 text-white/60">
-                            نظرة شاملة على أداء الفندق اليوم.
+                            {t(lang, 'نظرة شاملة على أداء الفندق اليوم.', "A quick snapshot of today's hotel performance.")}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="badge-success">الحالة: نشط</span>
-                    <span className="badge-primary">الأمان: مستقر</span>
+                    <span className="badge-success">{t(lang, 'الحالة: نشط', 'Status: Active')}</span>
+                    <span className="badge-primary">{t(lang, 'الأمان: مستقر', 'Security: Stable')}</span>
                 </div>
             </div>
 
@@ -184,7 +172,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statsCards.map((stat, index) => (
                     <div
-                        key={stat.title}
+                        key={stat.id}
                         className="card p-6 animate-slide-up"
                         style={{ animationDelay: `${index * 100}ms` }}
                     >
@@ -222,7 +210,7 @@ export default function DashboardPage() {
                 <div className="card p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">
-                            الإيرادات الشهرية
+                            {t(lang, 'الإيرادات الشهرية', 'Monthly Revenue')}
                         </h2>
                         <div className="flex items-center gap-2">
                             <DollarSign className="w-5 h-5 text-success-500" />
@@ -236,15 +224,27 @@ export default function DashboardPage() {
                         {stats.lastMonthRevenue > 0 ? (
                             <span>
                                 {stats.monthlyRevenue >= stats.lastMonthRevenue
-                                    ? `زيادة بنسبة ${Math.round(
+                                    ? t(
+                                        lang,
+                                        `زيادة بنسبة ${Math.round(
+                                            ((stats.monthlyRevenue - stats.lastMonthRevenue) / stats.lastMonthRevenue) * 100
+                                        )}% مقارنة بالشهر الماضي`,
+                                        `Up ${Math.round(
                                         ((stats.monthlyRevenue - stats.lastMonthRevenue) / stats.lastMonthRevenue) * 100
-                                    )}% مقارنة بالشهر الماضي`
-                                    : `انخفاض بنسبة ${Math.round(
+                                        )}% vs last month`
+                                    )
+                                    : t(
+                                        lang,
+                                        `انخفاض بنسبة ${Math.round(
+                                            ((stats.lastMonthRevenue - stats.monthlyRevenue) / stats.lastMonthRevenue) * 100
+                                        )}% مقارنة بالشهر الماضي`,
+                                        `Down ${Math.round(
                                         ((stats.lastMonthRevenue - stats.monthlyRevenue) / stats.lastMonthRevenue) * 100
-                                    )}% مقارنة بالشهر الماضي`}
+                                        )}% vs last month`
+                                    )}
                             </span>
                         ) : (
-                            <span>لا توجد بيانات للمقارنة مع الشهر الماضي</span>
+                            <span>{t(lang, 'لا توجد بيانات للمقارنة مع الشهر الماضي', 'No comparison data for last month')}</span>
                         )}
                     </div>
                     <div className="mt-6 h-40 rounded-2xl border border-white/5 bg-gradient-to-b from-primary-500/20 via-transparent to-transparent" />
@@ -253,20 +253,20 @@ export default function DashboardPage() {
                 {/* Today's Activity */}
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-white mb-6">
-                        نشاط اليوم
+                        {t(lang, 'نشاط اليوم', "Today's Activity")}
                     </h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">تسجيل الوصول</span>
-                            <span className="badge-success">{stats.todayCheckIns} نزيل</span>
+                            <span className="text-sm text-white/70">{t(lang, 'تسجيل الوصول', 'Check-ins')}</span>
+                            <span className="badge-success">{t(lang, `${stats.todayCheckIns} نزيل`, `${stats.todayCheckIns} guests`)}</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">تسجيل المغادرة</span>
-                            <span className="badge-warning">{stats.todayCheckOuts} نزيل</span>
+                            <span className="text-sm text-white/70">{t(lang, 'تسجيل المغادرة', 'Check-outs')}</span>
+                            <span className="badge-warning">{t(lang, `${stats.todayCheckOuts} نزيل`, `${stats.todayCheckOuts} guests`)}</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-sm text-white/70">طلبات خاصة</span>
-                            <span className="badge-primary">{stats.specialRequestsToday}</span>
+                            <span className="text-sm text-white/70">{t(lang, 'طلبات خاصة', 'Special requests')}</span>
+                            <span className="badge-primary">{t(lang, `${stats.specialRequestsToday}`, `${stats.specialRequestsToday}`)}</span>
                         </div>
                     </div>
                 </div>
@@ -275,17 +275,17 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className="card p-6">
                 <h2 className="text-lg font-semibold text-white mb-6">
-                    إجراءات سريعة
+                    {t(lang, 'إجراءات سريعة', 'Quick Actions')}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                        { label: 'حجز جديد', href: '/dashboard/bookings/new', icon: CalendarCheck },
-                        { label: 'إضافة نزيل', href: '/dashboard/guests/new', icon: Users },
-                        { label: 'إضافة غرفة', href: '/dashboard/rooms/new', icon: BedDouble },
-                        { label: 'الإعدادات', href: '/dashboard/settings', icon: Settings },
+                        { id: 'newBooking', label: t(lang, 'حجز جديد', 'New Booking'), href: '/dashboard/bookings/new', icon: CalendarCheck },
+                        { id: 'newGuest', label: t(lang, 'إضافة نزيل', 'Add Guest'), href: '/dashboard/guests/new', icon: Users },
+                        { id: 'newRoom', label: t(lang, 'إضافة غرفة', 'Add Room'), href: '/dashboard/rooms/new', icon: BedDouble },
+                        { id: 'settings', label: t(lang, 'الإعدادات', 'Settings'), href: '/dashboard/settings', icon: Settings },
                     ].map((action) => (
                         <a
-                            key={action.label}
+                            key={action.id}
                             href={action.href}
                             className="flex flex-col items-center gap-3 p-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-white/5 transition-all duration-200 group"
                         >
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-6 flex items-center gap-2 text-xs text-white/50">
                     <Sparkles className="w-4 h-4" />
-                    واجهة تشغيل احترافية قابلة للتخصيص حسب احتياجات الفندق.
+                    {t(lang, 'واجهة تشغيل احترافية قابلة للتخصيص حسب احتياجات الفندق.', 'A customizable, professional console tailored to your hotel.')}
                 </div>
             </div>
 
@@ -306,14 +306,14 @@ export default function DashboardPage() {
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-white">
-                        الإشعارات الأخيرة
+                        {t(lang, 'الإشعارات الأخيرة', 'Recent Notifications')}
                     </h2>
                     <Bell className="w-5 h-5 text-primary-300" />
                 </div>
 
                 {notifications.length === 0 ? (
                     <p className="text-white/60">
-                        لا توجد إشعارات حاليا.
+                        {t(lang, 'لا توجد إشعارات حاليا.', 'No notifications yet.')}
                     </p>
                 ) : (
                     <div className="space-y-3">

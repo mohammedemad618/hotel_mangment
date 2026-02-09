@@ -17,48 +17,48 @@ import {
     CalendarCheck,
     Crown,
 } from 'lucide-react';
+import { useHotelSettings } from '@/app/(dashboard)/layout';
 import { createGuestSchema, CreateGuestInput } from '@/lib/validations';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 const nationalities = [
-    'سعودي', 'إماراتي', 'كويتي', 'بحريني', 'قطري', 'عماني',
-    'مصري', 'أردني', 'لبناني', 'سوري', 'عراقي', 'يمني',
-    'أمريكي', 'بريطاني', 'فرنسي', 'ألماني', 'أخرى',
+    { value: 'سعودي', label: { ar: 'سعودي', en: 'Saudi' } },
+    { value: 'إماراتي', label: { ar: 'إماراتي', en: 'Emirati' } },
+    { value: 'كويتي', label: { ar: 'كويتي', en: 'Kuwaiti' } },
+    { value: 'بحريني', label: { ar: 'بحريني', en: 'Bahraini' } },
+    { value: 'قطري', label: { ar: 'قطري', en: 'Qatari' } },
+    { value: 'عماني', label: { ar: 'عماني', en: 'Omani' } },
+    { value: 'مصري', label: { ar: 'مصري', en: 'Egyptian' } },
+    { value: 'أردني', label: { ar: 'أردني', en: 'Jordanian' } },
+    { value: 'لبناني', label: { ar: 'لبناني', en: 'Lebanese' } },
+    { value: 'سوري', label: { ar: 'سوري', en: 'Syrian' } },
+    { value: 'عراقي', label: { ar: 'عراقي', en: 'Iraqi' } },
+    { value: 'يمني', label: { ar: 'يمني', en: 'Yemeni' } },
+    { value: 'أمريكي', label: { ar: 'أمريكي', en: 'American' } },
+    { value: 'بريطاني', label: { ar: 'بريطاني', en: 'British' } },
+    { value: 'فرنسي', label: { ar: 'فرنسي', en: 'French' } },
+    { value: 'ألماني', label: { ar: 'ألماني', en: 'German' } },
+    { value: 'أخرى', label: { ar: 'أخرى', en: 'Other' } },
 ];
 
 const idTypes = [
-    { value: 'national_id', label: 'هوية وطنية' },
-    { value: 'passport', label: 'جواز سفر' },
-    { value: 'driver_license', label: 'رخصة قيادة' },
+    { value: 'national_id', label: { ar: 'هوية وطنية', en: 'National ID' } },
+    { value: 'passport', label: { ar: 'جواز سفر', en: 'Passport' } },
+    { value: 'driver_license', label: { ar: 'رخصة قيادة', en: 'Driver license' } },
 ];
 
 const guestTypes = [
-    { value: 'individual', label: 'فردي', icon: User },
-    { value: 'corporate', label: 'شركات', icon: Building2 },
-    { value: 'vip', label: 'VIP', icon: Crown },
+    { value: 'individual', label: { ar: 'فردي', en: 'Individual' }, icon: User },
+    { value: 'corporate', label: { ar: 'شركات', en: 'Corporate' }, icon: Building2 },
+    { value: 'vip', label: { ar: 'VIP', en: 'VIP' }, icon: Crown },
 ];
 
 export default function NewGuestPage() {
     const router = useRouter();
+    const { settings: hotelSettings } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const [error, setError] = useState<string | null>(null);
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const {
         register,
@@ -89,14 +89,14 @@ export default function NewGuestPage() {
             const result = await response.json();
 
             if (!response.ok) {
-                setError(result.error || 'حدث خطأ أثناء إنشاء النزيل');
+                setError(result.error || t(lang, 'حدث خطأ أثناء إنشاء النزيل', 'Failed to create the guest'));
                 return;
             }
 
             router.push('/dashboard/guests');
 
         } catch (err) {
-            setError('حدث خطأ في الاتصال بالخادم');
+            setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         }
     };
 
@@ -118,10 +118,10 @@ export default function NewGuestPage() {
                 </button>
                 <div>
                     <h1 className="text-2xl font-bold text-white">
-                        إضافة نزيل جديد
+                        {t(lang, 'إضافة نزيل جديد', 'Add New Guest')}
                     </h1>
                     <p className="mt-1 text-white/60">
-                        أدخل بيانات النزيل الجديد
+                        {t(lang, 'أدخل بيانات النزيل الجديد', 'Enter the guest details')}
                     </p>
                 </div>
             </div>
@@ -138,7 +138,7 @@ export default function NewGuestPage() {
                 {/* Guest Type */}
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-white mb-4">
-                        نوع النزيل
+                        {t(lang, 'نوع النزيل', 'Guest Type')}
                     </h2>
                     <div className="grid grid-cols-3 gap-4">
                         {guestTypes.map((type) => (
@@ -158,7 +158,7 @@ export default function NewGuestPage() {
                                 <type.icon className={`w-8 h-8 mb-2 ${selectedGuestType === type.value ? 'text-primary-300' : 'text-white/40'
                                     }`} />
                                 <span className="font-medium text-white">
-                                    {type.label}
+                                    {type.label[lang]}
                                 </span>
                             </label>
                         ))}
@@ -169,18 +169,18 @@ export default function NewGuestPage() {
                 <div className="card p-6 space-y-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <User className="w-5 h-5 text-primary-300" />
-                        المعلومات الشخصية
+                        {t(lang, 'المعلومات الشخصية', 'Personal Information')}
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                الاسم الأول *
+                                {t(lang, 'الاسم الأول *', 'First name *')}
                             </label>
                             <input
                                 {...register('firstName')}
                                 className="input"
-                                placeholder="محمد"
+                                placeholder={t(lang, 'محمد', 'Mohammed')}
                             />
                             {errors.firstName && (
                                 <p className="mt-1 text-sm text-danger-500">{errors.firstName.message}</p>
@@ -189,12 +189,12 @@ export default function NewGuestPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                الاسم الأخير *
+                                {t(lang, 'الاسم الأخير *', 'Last name *')}
                             </label>
                             <input
                                 {...register('lastName')}
                                 className="input"
-                                placeholder="العلي"
+                                placeholder={t(lang, 'العلي', 'Al Ali')}
                             />
                             {errors.lastName && (
                                 <p className="mt-1 text-sm text-danger-500">{errors.lastName.message}</p>
@@ -203,7 +203,7 @@ export default function NewGuestPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                رقم الهاتف *
+                                {t(lang, 'رقم الهاتف *', 'Phone *')}
                             </label>
                             <div className="relative">
                                 <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -221,7 +221,7 @@ export default function NewGuestPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                البريد الإلكتروني
+                                {t(lang, 'البريد الإلكتروني', 'Email')}
                             </label>
                             <div className="relative">
                                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -237,7 +237,7 @@ export default function NewGuestPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                تاريخ الميلاد
+                                {t(lang, 'تاريخ الميلاد', 'Date of birth')}
                             </label>
                             <div className="relative">
                                 <CalendarCheck className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -251,14 +251,14 @@ export default function NewGuestPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                الجنسية *
+                                {t(lang, 'الجنسية *', 'Nationality *')}
                             </label>
                             <div className="relative">
                                 <Globe className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                                 <select {...register('nationality')} className="input pr-10">
-                                    <option value="">اختر الجنسية</option>
+                                    <option value="">{t(lang, 'اختر الجنسية', 'Select nationality')}</option>
                                     {nationalities.map((nat) => (
-                                        <option key={nat} value={nat}>{nat}</option>
+                                        <option key={nat.value} value={nat.value}>{nat.label[lang]}</option>
                                     ))}
                                 </select>
                             </div>
@@ -269,18 +269,18 @@ export default function NewGuestPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                نوع الهوية *
+                                {t(lang, 'نوع الهوية *', 'ID type *')}
                             </label>
                             <select {...register('idType')} className="input">
                                 {idTypes.map((type) => (
-                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                    <option key={type.value} value={type.value}>{type.label[lang]}</option>
                                 ))}
                             </select>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                رقم الهوية *
+                                {t(lang, 'رقم الهوية *', 'ID number *')}
                             </label>
                             <div className="relative">
                                 <CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -299,12 +299,12 @@ export default function NewGuestPage() {
                         {selectedGuestType === 'corporate' && (
                             <div>
                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                    اسم الشركة
+                                    {t(lang, 'اسم الشركة', 'Company name')}
                                 </label>
                                 <input
                                     {...register('companyName')}
                                     className="input"
-                                    placeholder="شركة ABC"
+                                    placeholder={t(lang, 'شركة ABC', 'Company ABC')}
                                 />
                             </div>
                         )}
@@ -313,12 +313,12 @@ export default function NewGuestPage() {
                     {/* Notes */}
                     <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                            ملاحظات
+                            {t(lang, 'ملاحظات', 'Notes')}
                         </label>
                         <textarea
                             {...register('notes')}
                             className="input min-h-[100px]"
-                            placeholder="أي ملاحظات إضافية..."
+                            placeholder={t(lang, 'أي ملاحظات إضافية...', 'Any additional notes...')}
                         />
                     </div>
                 </div>
@@ -330,7 +330,7 @@ export default function NewGuestPage() {
                         onClick={() => router.back()}
                         className="btn-secondary"
                     >
-                        إلغاء
+                        {t(lang, 'إلغاء', 'Cancel')}
                     </button>
                     <button
                         type="submit"
@@ -342,7 +342,7 @@ export default function NewGuestPage() {
                         ) : (
                             <>
                                 <Save className="w-5 h-5" />
-                                <span>حفظ النزيل</span>
+                                <span>{t(lang, 'حفظ النزيل', 'Save Guest')}</span>
                             </>
                         )}
                     </button>

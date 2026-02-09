@@ -18,6 +18,8 @@ import {
     Search,
     Wallet,
 } from 'lucide-react';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 export interface HotelSettings {
     currency: string;
@@ -99,12 +101,12 @@ const SettingsContext = createContext<HotelSettingsContextValue>({
 export const useHotelSettings = () => useContext(SettingsContext);
 
 const navigation = [
-    { name: 'لوحة التحكم', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'الغرف', href: '/dashboard/rooms', icon: BedDouble },
-    { name: 'الحجوزات', href: '/dashboard/bookings', icon: CalendarCheck },
-    { name: 'النزلاء', href: '/dashboard/guests', icon: Users },
-    { name: 'المالية', href: '/dashboard/finance', icon: Wallet },
-    { name: 'الإعدادات', href: '/dashboard/settings', icon: Settings },
+    { name: { ar: 'لوحة التحكم', en: 'Dashboard' }, href: '/dashboard', icon: LayoutDashboard },
+    { name: { ar: 'الغرف', en: 'Rooms' }, href: '/dashboard/rooms', icon: BedDouble },
+    { name: { ar: 'الحجوزات', en: 'Bookings' }, href: '/dashboard/bookings', icon: CalendarCheck },
+    { name: { ar: 'النزلاء', en: 'Guests' }, href: '/dashboard/guests', icon: Users },
+    { name: { ar: 'المالية', en: 'Finance' }, href: '/dashboard/finance', icon: Wallet },
+    { name: { ar: 'الإعدادات', en: 'Settings' }, href: '/dashboard/settings', icon: Settings },
 ];
 
 export default function DashboardLayout({
@@ -120,25 +122,7 @@ export default function DashboardLayout({
     const [settings, setSettings] = useState<HotelSettings | null>(null);
     const [notifications, setNotifications] = useState<HotelNotification[]>([]);
     const [hotelProfile, setHotelProfile] = useState<HotelProfile | null>(null);
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
+    const lang = normalizeLanguage(settings?.language);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -263,7 +247,7 @@ export default function DashboardLayout({
                             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                             return (
                                 <Link
-                                    key={item.name}
+                                    key={item.href}
                                     href={item.href}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border ${isActive
                                             ? 'bg-primary-500/15 text-white border-primary-500/40'
@@ -271,7 +255,7 @@ export default function DashboardLayout({
                                         }`}
                                 >
                                     <item.icon className="w-5 h-5" />
-                                    <span className="font-medium">{item.name}</span>
+                                    <span className="font-medium">{item.name[lang]}</span>
                                     {isActive && <ChevronLeft className="w-4 h-4 mr-auto text-primary-200" />}
                                 </Link>
                             );
@@ -298,7 +282,7 @@ export default function DashboardLayout({
                             className="mt-3 flex items-center gap-3 w-full px-4 py-3 rounded-xl text-danger-500 hover:bg-danger-500/10 transition-colors"
                         >
                             <LogOut className="w-5 h-5" />
-                            <span className="font-medium">تسجيل الخروج</span>
+                            <span className="font-medium">{t(lang, 'تسجيل الخروج', 'Logout')}</span>
                         </button>
                     </div>
                 </div>
@@ -319,11 +303,13 @@ export default function DashboardLayout({
                             <Search className="w-4 h-4 text-white/40" />
                             <input
                                 className="bg-transparent text-sm text-white/80 placeholder-white/40 focus:outline-none w-full"
-                                placeholder="ابحث عن غرفة، نزيل، أو حجز..."
+                                placeholder={t(lang, 'ابحث عن غرفة، نزيل، أو حجز...', 'Search for a room, guest, or booking...')}
                             />
                         </div>
                         <div className="flex-1 md:flex-none" />
-                        <span className="text-xs text-white/50 hidden sm:inline">الإصدار الاحترافي</span>
+                        <span className="text-xs text-white/50 hidden sm:inline">
+                            {t(lang, 'الإصدار الاحترافي', 'Pro Edition')}
+                        </span>
                     </div>
                 </header>
 

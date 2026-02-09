@@ -20,6 +20,8 @@ import {
     ArrowUpDown,
 } from 'lucide-react';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 interface Room {
     _id: string;
@@ -33,22 +35,22 @@ interface Room {
     isActive?: boolean;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-    available: { label: 'متاحة', color: 'badge-success', icon: Check },
-    occupied: { label: 'مشغولة', color: 'badge-primary', icon: BedDouble },
-    reserved: { label: 'محجوزة', color: 'badge-warning', icon: CalendarCheck },
-    maintenance: { label: 'صيانة', color: 'badge-danger', icon: Wrench },
-    cleaning: { label: 'تنظيف', color: 'badge-primary', icon: Sparkles },
-    inactive: { label: 'غير نشطة', color: 'badge bg-white/10 text-white/60', icon: XCircle },
+const statusConfig: Record<string, { label: { ar: string; en: string }; color: string; icon: any }> = {
+    available: { label: { ar: 'متاحة', en: 'Available' }, color: 'badge-success', icon: Check },
+    occupied: { label: { ar: 'مشغولة', en: 'Occupied' }, color: 'badge-primary', icon: BedDouble },
+    reserved: { label: { ar: 'محجوزة', en: 'Reserved' }, color: 'badge-warning', icon: CalendarCheck },
+    maintenance: { label: { ar: 'صيانة', en: 'Maintenance' }, color: 'badge-danger', icon: Wrench },
+    cleaning: { label: { ar: 'تنظيف', en: 'Cleaning' }, color: 'badge-primary', icon: Sparkles },
+    inactive: { label: { ar: 'غير نشطة', en: 'Inactive' }, color: 'badge bg-white/10 text-white/60', icon: XCircle },
 };
 
-const typeLabels: Record<string, string> = {
-    single: 'مفردة',
-    double: 'مزدوجة',
-    twin: 'توأم',
-    suite: 'جناح',
-    deluxe: 'فاخرة',
-    presidential: 'رئاسية',
+const typeLabels: Record<string, { ar: string; en: string }> = {
+    single: { ar: 'مفردة', en: 'Single' },
+    double: { ar: 'مزدوجة', en: 'Double' },
+    twin: { ar: 'توأم', en: 'Twin' },
+    suite: { ar: 'جناح', en: 'Suite' },
+    deluxe: { ar: 'فاخرة', en: 'Deluxe' },
+    presidential: { ar: 'رئاسية', en: 'Presidential' },
 };
 
 const statusOrder: Record<string, number> = {
@@ -62,6 +64,7 @@ const statusOrder: Record<string, number> = {
 
 export default function RoomsPage() {
     const { settings: hotelSettings } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const [rooms, setRooms] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -71,25 +74,6 @@ export default function RoomsPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [sortBy, setSortBy] = useState<'roomNumber' | 'price' | 'floor' | 'status'>('roomNumber');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     useEffect(() => {
         fetchRooms();
@@ -153,14 +137,14 @@ export default function RoomsPage() {
             if (floorFilter && room.floor.toString() !== floorFilter) return false;
 
             if (!query) return true;
-            const typeLabel = typeLabels[room.type] || room.type;
+            const typeLabel = typeLabels[room.type]?.[lang] || room.type;
             return (
                 room.roomNumber.toLowerCase().includes(query) ||
                 typeLabel.toLowerCase().includes(query) ||
                 room.floor.toString().includes(query)
             );
         });
-    }, [rooms, search, statusFilter, typeFilter, floorFilter]);
+    }, [rooms, search, statusFilter, typeFilter, floorFilter, lang]);
 
     const sortedRooms = useMemo(() => {
         const sorted = [...filteredRooms];
@@ -191,28 +175,28 @@ export default function RoomsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white">
-                        إدارة الغرف
+                        {t(lang, 'إدارة الغرف', 'Room Management')}
                     </h1>
                     <p className="mt-1 text-white/60">
-                        تابع حالة الغرف وأدر التسعير والتوافر بسهولة.
+                        {t(lang, 'تابع حالة الغرف وأدر التسعير والتوافر بسهولة.', 'Track room status, pricing, and availability.')}
                     </p>
                 </div>
                 <Link href="/dashboard/rooms/new" className="btn-primary">
                     <Plus className="w-5 h-5" />
-                    <span>إضافة غرفة</span>
+                    <span>{t(lang, 'إضافة غرفة', 'Add Room')}</span>
                 </Link>
             </div>
 
             {/* Summary */}
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 {[
-                    { label: 'إجمالي الغرف', value: stats.total, icon: Building2, tone: 'text-primary-300' },
-                    { label: 'متاحة', value: stats.available, icon: Check, tone: 'text-success-500' },
-                    { label: 'مشغولة', value: stats.occupied, icon: BedDouble, tone: 'text-primary-300' },
-                    { label: 'محجوزة', value: stats.reserved, icon: CalendarCheck, tone: 'text-warning-500' },
-                    { label: 'صيانة/تنظيف', value: stats.maintenance, icon: Wrench, tone: 'text-danger-500' },
+                    { id: 'total', label: t(lang, 'إجمالي الغرف', 'Total Rooms'), value: stats.total, icon: Building2, tone: 'text-primary-300' },
+                    { id: 'available', label: statusConfig.available.label[lang], value: stats.available, icon: Check, tone: 'text-success-500' },
+                    { id: 'occupied', label: statusConfig.occupied.label[lang], value: stats.occupied, icon: BedDouble, tone: 'text-primary-300' },
+                    { id: 'reserved', label: statusConfig.reserved.label[lang], value: stats.reserved, icon: CalendarCheck, tone: 'text-warning-500' },
+                    { id: 'maintenance', label: t(lang, 'صيانة/تنظيف', 'Maintenance/Cleaning'), value: stats.maintenance, icon: Wrench, tone: 'text-danger-500' },
                 ].map((item) => (
-                    <div key={item.label} className="card p-4 flex items-center gap-3">
+                    <div key={item.id} className="card p-4 flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-white/5 border border-white/10">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
@@ -231,7 +215,7 @@ export default function RoomsPage() {
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                         <input
                             type="text"
-                            placeholder="ابحث برقم الغرفة أو النوع أو الطابق..."
+                            placeholder={t(lang, 'ابحث برقم الغرفة أو النوع أو الطابق...', 'Search by room number, type, or floor...')}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="input pr-10"
@@ -243,22 +227,22 @@ export default function RoomsPage() {
                             onChange={(e) => setStatusFilter(e.target.value)}
                             className="input min-w-[150px]"
                         >
-                            <option value="">كل الحالات</option>
-                            <option value="available">متاحة</option>
-                            <option value="occupied">مشغولة</option>
-                            <option value="reserved">محجوزة</option>
-                            <option value="maintenance">صيانة</option>
-                            <option value="cleaning">تنظيف</option>
-                            <option value="inactive">غير نشطة</option>
+                            <option value="">{t(lang, 'كل الحالات', 'All statuses')}</option>
+                            <option value="available">{statusConfig.available.label[lang]}</option>
+                            <option value="occupied">{statusConfig.occupied.label[lang]}</option>
+                            <option value="reserved">{statusConfig.reserved.label[lang]}</option>
+                            <option value="maintenance">{statusConfig.maintenance.label[lang]}</option>
+                            <option value="cleaning">{statusConfig.cleaning.label[lang]}</option>
+                            <option value="inactive">{statusConfig.inactive.label[lang]}</option>
                         </select>
                         <select
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
                             className="input min-w-[150px]"
                         >
-                            <option value="">كل الأنواع</option>
+                            <option value="">{t(lang, 'كل الأنواع', 'All types')}</option>
                             {Object.entries(typeLabels).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
+                                <option key={value} value={value}>{label[lang]}</option>
                             ))}
                         </select>
                         <select
@@ -266,9 +250,11 @@ export default function RoomsPage() {
                             onChange={(e) => setFloorFilter(e.target.value)}
                             className="input min-w-[120px]"
                         >
-                            <option value="">كل الطوابق</option>
+                            <option value="">{t(lang, 'كل الطوابق', 'All floors')}</option>
                             {floors.map((floor) => (
-                                <option key={floor} value={floor}>الطابق {floor}</option>
+                                <option key={floor} value={floor}>
+                                    {t(lang, `الطابق ${floor}`, `Floor ${floor}`)}
+                                </option>
                             ))}
                         </select>
                         <select
@@ -276,10 +262,10 @@ export default function RoomsPage() {
                             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                             className="input min-w-[140px]"
                         >
-                            <option value="roomNumber">ترتيب حسب رقم الغرفة</option>
-                            <option value="price">ترتيب حسب السعر</option>
-                            <option value="floor">ترتيب حسب الطابق</option>
-                            <option value="status">ترتيب حسب الحالة</option>
+                            <option value="roomNumber">{t(lang, 'ترتيب حسب رقم الغرفة', 'Sort by room #')}</option>
+                            <option value="price">{t(lang, 'ترتيب حسب السعر', 'Sort by price')}</option>
+                            <option value="floor">{t(lang, 'ترتيب حسب الطابق', 'Sort by floor')}</option>
+                            <option value="status">{t(lang, 'ترتيب حسب الحالة', 'Sort by status')}</option>
                         </select>
                         <button
                             type="button"
@@ -287,7 +273,9 @@ export default function RoomsPage() {
                             className="btn-secondary text-sm"
                         >
                             <ArrowUpDown className="w-4 h-4" />
-                            {sortDir === 'asc' ? 'تصاعدي' : 'تنازلي'}
+                            {sortDir === 'asc'
+                                ? t(lang, 'تصاعدي', 'Ascending')
+                                : t(lang, 'تنازلي', 'Descending')}
                         </button>
                         <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
                             <button
@@ -299,7 +287,7 @@ export default function RoomsPage() {
                                     }`}
                             >
                                 <LayoutGrid className="w-4 h-4" />
-                                شبكة
+                                {t(lang, 'شبكة', 'Grid')}
                             </button>
                             <button
                                 type="button"
@@ -310,13 +298,17 @@ export default function RoomsPage() {
                                     }`}
                             >
                                 <List className="w-4 h-4" />
-                                قائمة
+                                {t(lang, 'قائمة', 'List')}
                             </button>
                         </div>
                     </div>
                 </div>
                 <div className="mt-3 text-xs text-white/50">
-                    عرض {sortedRooms.length} من أصل {rooms.length} غرفة
+                    {t(
+                        lang,
+                        `عرض ${sortedRooms.length} من أصل ${rooms.length} غرفة`,
+                        `Showing ${sortedRooms.length} of ${rooms.length} rooms`
+                    )}
                 </div>
             </div>
 
@@ -329,11 +321,15 @@ export default function RoomsPage() {
                 <div className="card p-12 text-center">
                     <BedDouble className="w-16 h-16 mx-auto text-white/30" />
                     <p className="mt-4 text-white/60">
-                        لا توجد غرف{search ? ' مطابقة للبحث' : ''}.
+                        {t(
+                            lang,
+                            `لا توجد غرف${search ? ' مطابقة للبحث' : ''}.`,
+                            `No rooms${search ? ' match your search' : ''}.`
+                        )}
                     </p>
                     <Link href="/dashboard/rooms/new" className="btn-primary mt-4 inline-flex">
                         <Plus className="w-5 h-5" />
-                        <span>إضافة غرفة جديدة</span>
+                        <span>{t(lang, 'إضافة غرفة جديدة', 'Add New Room')}</span>
                     </Link>
                 </div>
             ) : viewMode === 'grid' ? (
@@ -342,7 +338,9 @@ export default function RoomsPage() {
                         const statusKey = room.isActive === false ? 'inactive' : room.status;
                         const status = statusConfig[statusKey] || statusConfig.available;
                         const StatusIcon = status.icon;
-                        const capacityLabel = `${room.capacity.adults} بالغ${room.capacity.children > 0 ? ` + ${room.capacity.children} طفل` : ''}`;
+                        const capacityLabel = lang === 'en'
+                            ? `${room.capacity.adults} adults${room.capacity.children > 0 ? ` + ${room.capacity.children} children` : ''}`
+                            : `${room.capacity.adults} بالغ${room.capacity.children > 0 ? ` + ${room.capacity.children} طفل` : ''}`;
 
                         return (
                             <div
@@ -352,17 +350,17 @@ export default function RoomsPage() {
                             >
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
-                                        <p className="text-xs text-white/40">رقم الغرفة</p>
+                                        <p className="text-xs text-white/40">{t(lang, 'رقم الغرفة', 'Room #')}</p>
                                         <h3 className="text-xl font-bold text-white">
                                             {room.roomNumber}
                                         </h3>
                                         <p className="text-sm text-white/50">
-                                            الطابق {room.floor} - {typeLabels[room.type] || room.type}
+                                            {t(lang, `الطابق ${room.floor}`, `Floor ${room.floor}`)} - {typeLabels[room.type]?.[lang] || room.type}
                                         </p>
                                     </div>
                                     <span className={status.color}>
                                         <StatusIcon className="w-3 h-3 ml-1 inline" />
-                                        {status.label}
+                                        {status.label[lang]}
                                     </span>
                                 </div>
 
@@ -379,7 +377,13 @@ export default function RoomsPage() {
                                     </div>
                                     <div className="flex items-center gap-2 text-white/60">
                                         <Sparkles className="w-4 h-4" />
-                                        <span>{room.amenities?.length || 0} مرافق</span>
+                                        <span>
+                                            {t(
+                                                lang,
+                                                `${room.amenities?.length || 0} مرافق`,
+                                                `${room.amenities?.length || 0} amenities`
+                                            )}
+                                        </span>
                                     </div>
                                     <div className="flex items-center gap-2 text-white/60">
                                         <Hash className="w-4 h-4" />
@@ -392,7 +396,7 @@ export default function RoomsPage() {
                                         href={`/dashboard/rooms/${room._id}`}
                                         className="btn-secondary w-full text-sm"
                                     >
-                                        عرض التفاصيل
+                                        {t(lang, 'عرض التفاصيل', 'View Details')}
                                     </Link>
                                 </div>
                             </div>
@@ -404,13 +408,13 @@ export default function RoomsPage() {
                     <table className="table">
                         <thead>
                             <tr>
-                                <th>رقم الغرفة</th>
-                                <th>الطابق</th>
-                                <th>النوع</th>
-                                <th>السعر/ليلة</th>
-                                <th>السعة</th>
-                                <th>المرافق</th>
-                                <th>الحالة</th>
+                                <th>{t(lang, 'رقم الغرفة', 'Room #')}</th>
+                                <th>{t(lang, 'الطابق', 'Floor')}</th>
+                                <th>{t(lang, 'النوع', 'Type')}</th>
+                                <th>{t(lang, 'السعر/ليلة', 'Price/night')}</th>
+                                <th>{t(lang, 'السعة', 'Capacity')}</th>
+                                <th>{t(lang, 'المرافق', 'Amenities')}</th>
+                                <th>{t(lang, 'الحالة', 'Status')}</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -428,17 +432,18 @@ export default function RoomsPage() {
                                     >
                                         <td className="font-medium text-white">{room.roomNumber}</td>
                                         <td className="text-white/60">{room.floor}</td>
-                                        <td className="text-white/60">{typeLabels[room.type] || room.type}</td>
+                                        <td className="text-white/60">{typeLabels[room.type]?.[lang] || room.type}</td>
                                         <td className="text-primary-300">{formatCurrency(room.pricePerNight)}</td>
                                         <td className="text-white/60">
-                                            {room.capacity.adults} بالغ
-                                            {room.capacity.children > 0 && ` + ${room.capacity.children} طفل`}
+                                            {lang === 'en'
+                                                ? `${room.capacity.adults} adults${room.capacity.children > 0 ? ` + ${room.capacity.children} children` : ''}`
+                                                : `${room.capacity.adults} بالغ${room.capacity.children > 0 ? ` + ${room.capacity.children} طفل` : ''}`}
                                         </td>
                                         <td className="text-white/60">{room.amenities?.length || 0}</td>
                                         <td>
                                             <span className={status.color}>
                                                 <StatusIcon className="w-3 h-3 ml-1 inline" />
-                                                {status.label}
+                                                {status.label[lang]}
                                             </span>
                                         </td>
                                         <td>
@@ -446,7 +451,7 @@ export default function RoomsPage() {
                                                 href={`/dashboard/rooms/${room._id}`}
                                                 className="btn-secondary text-xs"
                                             >
-                                                تفاصيل
+                                                {t(lang, 'تفاصيل', 'Details')}
                                             </Link>
                                         </td>
                                     </tr>

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-    Settings,
     Building2,
     Globe,
     Clock,
@@ -13,10 +12,8 @@ import {
     Loader2,
 } from 'lucide-react';
 import { useHotelSettings, HotelSettings } from '@/app/(dashboard)/layout';
-
-const resolveLanguage = (value?: string): HotelSettings['language'] => (
-    value === 'en' ? 'en' : 'ar'
-);
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 export default function SettingsPage() {
     const [isSaving, setIsSaving] = useState(false);
@@ -48,36 +45,18 @@ export default function SettingsPage() {
 
     const [settings, setSettings] = useState(defaultSettings);
     const [initialSettings, setInitialSettings] = useState(defaultSettings);
+    const lang = normalizeLanguage(settings.language);
 
     const toLayoutSettings = (data: typeof defaultSettings): HotelSettings => ({
         currency: data.currency,
         timezone: data.timezone,
-        language: resolveLanguage(data.language),
+        language: normalizeLanguage(data.language),
         checkInTime: data.checkInTime,
         checkOutTime: data.checkOutTime,
         taxRate: Number(data.taxRate) || 0,
         theme: data.theme,
         notifications: data.notifications,
     });
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const normalizeSettings = (hotel?: any) => {
         const hotelSettings = hotel?.settings || {};
@@ -88,7 +67,7 @@ export default function SettingsPage() {
             logo: hotel?.logo || defaultSettings.logo,
             currency: hotelSettings.currency || defaultSettings.currency,
             timezone: hotelSettings.timezone || defaultSettings.timezone,
-            language: resolveLanguage(hotelSettings.language || defaultSettings.language),
+            language: normalizeLanguage(hotelSettings.language || defaultSettings.language),
             checkInTime: hotelSettings.checkInTime || defaultSettings.checkInTime,
             checkOutTime: hotelSettings.checkOutTime || defaultSettings.checkOutTime,
             taxRate: typeof hotelSettings.taxRate === 'number' ? hotelSettings.taxRate : defaultSettings.taxRate,
@@ -103,11 +82,11 @@ export default function SettingsPage() {
     const handleLogoChange = (file: File | null) => {
         if (!file) return;
         if (!file.type.startsWith('image/')) {
-            setError('يرجى اختيار ملف صورة صالح');
+            setError(t(lang, 'يرجى اختيار ملف صورة صالح', 'Please select a valid image file'));
             return;
         }
         if (file.size > 1024 * 1024) {
-            setError('حجم الشعار يجب أن يكون أقل من 1MB');
+            setError(t(lang, 'حجم الشعار يجب أن يكون أقل من 1MB', 'Logo size must be less than 1MB'));
             return;
         }
 
@@ -148,7 +127,7 @@ export default function SettingsPage() {
 
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'حدث خطأ أثناء حفظ الإعدادات');
+                setError(result.error || t(lang, 'حدث خطأ أثناء حفظ الإعدادات', 'Failed to save settings'));
                 return;
             }
 
@@ -163,9 +142,9 @@ export default function SettingsPage() {
                 logo: result.data?.logo,
                 address: result.data?.address,
             });
-            setSuccess('تم حفظ الإعدادات بنجاح');
+            setSuccess(t(lang, 'تم حفظ الإعدادات بنجاح', 'Settings saved successfully'));
         } catch (err) {
-            setError('حدث خطأ في الاتصال بالخادم');
+            setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setIsSaving(false);
         }
@@ -181,7 +160,7 @@ export default function SettingsPage() {
                 const data = await response.json();
 
                 if (!response.ok) {
-                    setError(data.error || 'تعذر جلب الإعدادات');
+                    setError(data.error || t(lang, 'تعذر جلب الإعدادات', 'Failed to load settings'));
                     return;
                 }
 
@@ -197,7 +176,7 @@ export default function SettingsPage() {
                     address: data.user?.hotel?.address,
                 });
             } catch (err) {
-                setError('حدث خطأ في الاتصال بالخادم');
+                setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
             } finally {
                 setIsLoading(false);
             }
@@ -212,12 +191,12 @@ export default function SettingsPage() {
     );
 
     const tabs = [
-        { id: 'general', label: 'عام', icon: Building2 },
-        { id: 'localization', label: 'التوطين', icon: Globe },
-        { id: 'operations', label: 'العمليات', icon: Clock },
-        { id: 'appearance', label: 'المظهر', icon: Palette },
-        { id: 'notifications', label: 'الإشعارات', icon: Bell },
-        { id: 'security', label: 'الأمان', icon: Shield },
+        { id: 'general', label: { ar: 'عام', en: 'General' }, icon: Building2 },
+        { id: 'localization', label: { ar: 'التوطين', en: 'Localization' }, icon: Globe },
+        { id: 'operations', label: { ar: 'العمليات', en: 'Operations' }, icon: Clock },
+        { id: 'appearance', label: { ar: 'المظهر', en: 'Appearance' }, icon: Palette },
+        { id: 'notifications', label: { ar: 'الإشعارات', en: 'Notifications' }, icon: Bell },
+        { id: 'security', label: { ar: 'الأمان', en: 'Security' }, icon: Shield },
     ];
 
     return (
@@ -225,10 +204,10 @@ export default function SettingsPage() {
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-white">
-                    الإعدادات
+                    {t(lang, 'الإعدادات', 'Settings')}
                 </h1>
                 <p className="mt-1 text-white/60">
-                    إدارة إعدادات الفندق والنظام
+                    {t(lang, 'إدارة إعدادات الفندق والنظام', 'Manage hotel and system settings')}
                 </p>
             </div>
 
@@ -258,7 +237,7 @@ export default function SettingsPage() {
                                     }`}
                             >
                                 <tab.icon className="w-5 h-5" />
-                                <span className="font-medium">{tab.label}</span>
+                                <span className="font-medium">{tab.label[lang]}</span>
                             </button>
                         ))}
                     </nav>
@@ -277,13 +256,13 @@ export default function SettingsPage() {
                                 {activeTab === 'general' && (
                                     <div className="space-y-6">
                                         <h2 className="text-lg font-semibold text-white mb-6">
-                                            معلومات الفندق
+                                            {t(lang, 'معلومات الفندق', 'Hotel information')}
                                         </h2>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    اسم الفندق
+                                                    {t(lang, 'اسم الفندق', 'Hotel name')}
                                                 </label>
                                                 <input
                                                     type="text"
@@ -295,7 +274,7 @@ export default function SettingsPage() {
 
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    البريد الإلكتروني
+                                                    {t(lang, 'البريد الإلكتروني', 'Email')}
                                                 </label>
                                                 <input
                                                     type="email"
@@ -308,7 +287,7 @@ export default function SettingsPage() {
 
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    رقم الهاتف
+                                                    {t(lang, 'رقم الهاتف', 'Phone')}
                                                 </label>
                                                 <input
                                                     type="tel"
@@ -321,7 +300,7 @@ export default function SettingsPage() {
 
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    شعار الفندق
+                                                    {t(lang, 'شعار الفندق', 'Hotel logo')}
                                                 </label>
                                                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                                                     <div className="flex items-center gap-3">
@@ -337,7 +316,7 @@ export default function SettingsPage() {
                                                                 onClick={() => setSettings({ ...settings, logo: '' })}
                                                                 className="btn-secondary text-sm"
                                                             >
-                                                                إزالة الشعار
+                                                                {t(lang, 'إزالة الشعار', 'Remove logo')}
                                                             </button>
                                                         )}
                                                     </div>
@@ -345,16 +324,20 @@ export default function SettingsPage() {
                                                         {settings.logo ? (
                                                             <img
                                                                 src={settings.logo}
-                                                                alt="شعار الفندق"
+                                                                alt={t(lang, 'شعار الفندق', 'Hotel logo')}
                                                                 className="w-20 h-20 rounded-xl object-contain border border-white/10 bg-white/5 p-2"
                                                             />
                                                         ) : (
                                                             <div className="w-20 h-20 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/40">
-                                                                بدون شعار
+                                                                {t(lang, 'بدون شعار', 'No logo')}
                                                             </div>
                                                         )}
                                                         <p className="text-xs text-white/50">
-                                                            يفضل رفع صورة PNG بخلفية شفافة بحجم أقل من 1MB.
+                                                            {t(
+                                                                lang,
+                                                                'يفضل رفع صورة PNG بخلفية شفافة بحجم أقل من 1MB.',
+                                                                'Prefer uploading a transparent PNG under 1MB.'
+                                                            )}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -367,52 +350,52 @@ export default function SettingsPage() {
                                 {activeTab === 'localization' && (
                                     <div className="space-y-6">
                                         <h2 className="text-lg font-semibold text-white mb-6">
-                                            إعدادات التوطين
+                                            {t(lang, 'إعدادات التوطين', 'Localization settings')}
                                         </h2>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    العملة
+                                                    {t(lang, 'العملة', 'Currency')}
                                                 </label>
                                                 <select
                                                     value={settings.currency}
                                                     onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
                                                     className="input"
                                                 >
-                                                    <option value="SAR">ريال سعودي (SAR)</option>
-                                                    <option value="AED">درهم إماراتي (AED)</option>
-                                                    <option value="USD">دولار أمريكي (USD)</option>
-                                                    <option value="EUR">يورو (EUR)</option>
+                                                    <option value="SAR">{t(lang, 'ريال سعودي (SAR)', 'Saudi Riyal (SAR)')}</option>
+                                                    <option value="AED">{t(lang, 'درهم إماراتي (AED)', 'UAE Dirham (AED)')}</option>
+                                                    <option value="USD">{t(lang, 'دولار أمريكي (USD)', 'US Dollar (USD)')}</option>
+                                                    <option value="EUR">{t(lang, 'يورو (EUR)', 'Euro (EUR)')}</option>
                                                 </select>
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    المنطقة الزمنية
+                                                    {t(lang, 'المنطقة الزمنية', 'Timezone')}
                                                 </label>
                                                 <select
                                                     value={settings.timezone}
                                                     onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
                                                     className="input"
                                                 >
-                                                    <option value="Asia/Riyadh">الرياض (GMT+3)</option>
-                                                    <option value="Asia/Dubai">دبي (GMT+4)</option>
-                                                    <option value="Africa/Cairo">القاهرة (GMT+2)</option>
+                                                    <option value="Asia/Riyadh">{t(lang, 'الرياض (GMT+3)', 'Riyadh (GMT+3)')}</option>
+                                                    <option value="Asia/Dubai">{t(lang, 'دبي (GMT+4)', 'Dubai (GMT+4)')}</option>
+                                                    <option value="Africa/Cairo">{t(lang, 'القاهرة (GMT+2)', 'Cairo (GMT+2)')}</option>
                                                 </select>
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    اللغة
+                                                    {t(lang, 'اللغة', 'Language')}
                                                 </label>
                                                 <select
                                                     value={settings.language}
                                                     onChange={(e) => setSettings({ ...settings, language: e.target.value })}
                                                     className="input"
                                                 >
-                                                    <option value="ar">العربية</option>
-                                                    <option value="en">English</option>
+                                                    <option value="ar">{t(lang, 'العربية', 'Arabic')}</option>
+                                                    <option value="en">{t(lang, 'الإنجليزية', 'English')}</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -423,13 +406,13 @@ export default function SettingsPage() {
                                 {activeTab === 'operations' && (
                                     <div className="space-y-6">
                                         <h2 className="text-lg font-semibold text-white mb-6">
-                                            إعدادات العمليات
+                                            {t(lang, 'إعدادات العمليات', 'Operations settings')}
                                         </h2>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    وقت تسجيل الوصول
+                                                    {t(lang, 'وقت تسجيل الوصول', 'Check-in time')}
                                                 </label>
                                                 <input
                                                     type="time"
@@ -441,7 +424,7 @@ export default function SettingsPage() {
 
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    وقت تسجيل المغادرة
+                                                    {t(lang, 'وقت تسجيل المغادرة', 'Check-out time')}
                                                 </label>
                                                 <input
                                                     type="time"
@@ -453,7 +436,7 @@ export default function SettingsPage() {
 
                                             <div>
                                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                                    نسبة الضريبة (%)
+                                                    {t(lang, 'نسبة الضريبة (%)', 'Tax rate (%)')}
                                                 </label>
                                                 <input
                                                     type="number"
@@ -465,7 +448,7 @@ export default function SettingsPage() {
                                                     step="0.5"
                                                 />
                                                 <p className="mt-1 text-xs text-white/40">
-                                                    مثال: 15 تعني 15% من قيمة الحجز.
+                                                    {t(lang, 'مثال: 15 تعني 15% من قيمة الحجز.', 'Example: 15 means 15% of the booking total.')}
                                                 </p>
                                             </div>
                                         </div>
@@ -476,22 +459,22 @@ export default function SettingsPage() {
                                 {activeTab === 'notifications' && (
                                     <div className="space-y-6">
                                         <h2 className="text-lg font-semibold text-white mb-6">
-                                            إعدادات الإشعارات
+                                            {t(lang, 'إعدادات الإشعارات', 'Notification settings')}
                                         </h2>
 
                                         <div className="space-y-4">
                                             {[
-                                                { key: 'newBooking', label: 'حجز جديد' },
-                                                { key: 'cancelledBooking', label: 'إلغاء حجز' },
-                                                { key: 'paymentReceived', label: 'استلام دفعة' },
-                                                { key: 'dailyReport', label: 'التقرير اليومي' },
+                                                { key: 'newBooking', label: { ar: 'حجز جديد', en: 'New booking' } },
+                                                { key: 'cancelledBooking', label: { ar: 'إلغاء حجز', en: 'Booking cancelled' } },
+                                                { key: 'paymentReceived', label: { ar: 'استلام دفعة', en: 'Payment received' } },
+                                                { key: 'dailyReport', label: { ar: 'التقرير اليومي', en: 'Daily report' } },
                                             ].map((item) => (
                                                 <label
                                                     key={item.key}
                                                     className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer"
                                                 >
                                                     <span className="font-medium text-white">
-                                                        {item.label}
+                                                        {item.label[lang]}
                                                     </span>
                                                     <input
                                                         type="checkbox"
@@ -517,7 +500,7 @@ export default function SettingsPage() {
                                 {activeTab === 'appearance' && (
                                     <div className="space-y-6">
                                         <h2 className="text-lg font-semibold text-white mb-6">
-                                            المظهر
+                                            {t(lang, 'المظهر', 'Appearance')}
                                         </h2>
                                         <div className="flex gap-4">
                                             {['light', 'dark', 'system'].map((theme) => (
@@ -530,7 +513,11 @@ export default function SettingsPage() {
                                                         }`}
                                                 >
                                                     <span className="font-medium">
-                                                        {theme === 'light' ? 'فاتح' : theme === 'dark' ? 'داكن' : 'تلقائي'}
+                                                        {theme === 'light'
+                                                            ? t(lang, 'فاتح', 'Light')
+                                                            : theme === 'dark'
+                                                                ? t(lang, 'داكن', 'Dark')
+                                                                : t(lang, 'تلقائي', 'System')}
                                                     </span>
                                                 </button>
                                             ))}
@@ -542,13 +529,13 @@ export default function SettingsPage() {
                                 {activeTab === 'security' && (
                                     <div className="space-y-6">
                                         <h2 className="text-lg font-semibold text-white mb-6">
-                                            الأمان
+                                            {t(lang, 'الأمان', 'Security')}
                                         </h2>
                                         <p className="text-white/60">
-                                            إعدادات الأمان وكلمات المرور
+                                            {t(lang, 'إعدادات الأمان وكلمات المرور', 'Security and password settings')}
                                         </p>
                                         <button className="btn-secondary">
-                                            تغيير كلمة المرور
+                                            {t(lang, 'تغيير كلمة المرور', 'Change password')}
                                         </button>
                                     </div>
                                 )}
@@ -565,7 +552,7 @@ export default function SettingsPage() {
                                         ) : (
                                             <>
                                                 <Save className="w-5 h-5" />
-                                                <span>حفظ التغييرات</span>
+                                                <span>{t(lang, 'حفظ التغييرات', 'Save changes')}</span>
                                             </>
                                         )}
                                     </button>

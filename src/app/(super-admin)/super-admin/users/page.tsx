@@ -13,6 +13,7 @@ import {
     Building2,
 } from 'lucide-react';
 import { createUserSchema, CreateUserInput } from '@/lib/validations';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 
 interface HotelOption {
     _id: string;
@@ -47,25 +48,6 @@ export default function SuperAdminUsersPage() {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [hotelFilter, setHotelFilter] = useState('');
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const {
         register,

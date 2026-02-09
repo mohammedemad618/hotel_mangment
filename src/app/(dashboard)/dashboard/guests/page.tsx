@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 import {
     Plus,
     Search,
@@ -39,14 +41,15 @@ interface Guest {
     isBlacklisted: boolean;
 }
 
-const guestTypeConfig: Record<string, { label: string; color: string; icon: any }> = {
-    individual: { label: 'فردي', color: 'badge-primary', icon: User },
-    corporate: { label: 'شركات', color: 'badge bg-accent-500/15 text-accent-300', icon: Building2 },
-    vip: { label: 'VIP', color: 'badge bg-warning-500/15 text-warning-500', icon: Crown },
+const guestTypeConfig: Record<string, { label: { ar: string; en: string }; color: string; icon: any }> = {
+    individual: { label: { ar: 'فردي', en: 'Individual' }, color: 'badge-primary', icon: User },
+    corporate: { label: { ar: 'شركات', en: 'Corporate' }, color: 'badge bg-accent-500/15 text-accent-300', icon: Building2 },
+    vip: { label: { ar: 'VIP', en: 'VIP' }, color: 'badge bg-warning-500/15 text-warning-500', icon: Crown },
 };
 
 export default function GuestsPage() {
     const { settings: hotelSettings } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const [guests, setGuests] = useState<Guest[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -56,25 +59,6 @@ export default function GuestsPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [sortBy, setSortBy] = useState<'name' | 'spent' | 'stays' | 'recent'>('name');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -176,28 +160,28 @@ export default function GuestsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white">
-                        إدارة النزلاء
+                        {t(lang, 'إدارة النزلاء', 'Guest Management')}
                     </h1>
                     <p className="mt-1 text-white/60">
-                        قاعدة بيانات النزلاء وسجلاتهم
+                        {t(lang, 'قاعدة بيانات النزلاء وسجلاتهم', 'Guest database and history')}
                     </p>
                 </div>
                 <Link href="/dashboard/guests/new" className="btn-primary">
                     <Plus className="w-5 h-5" />
-                    <span>إضافة نزيل</span>
+                    <span>{t(lang, 'إضافة نزيل', 'Add Guest')}</span>
                 </Link>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 {[
-                    { label: 'إجمالي النزلاء', value: stats.total, icon: Users, tone: 'text-primary-300' },
-                    { label: 'نزلاء VIP', value: stats.vip, icon: Crown, tone: 'text-warning-500' },
-                    { label: 'شركات', value: stats.corporate, icon: Building2, tone: 'text-accent-300' },
-                    { label: 'قائمة سوداء', value: stats.blacklisted, icon: ShieldAlert, tone: 'text-danger-500' },
-                    { label: 'إجمالي الإقامات', value: stats.stays, icon: CalendarCheck, tone: 'text-primary-300' },
-                    { label: 'إجمالي الإنفاق', value: formatCurrency(stats.revenue), icon: DollarSign, tone: 'text-success-500' },
+                    { id: 'total', label: t(lang, 'إجمالي النزلاء', 'Total guests'), value: stats.total, icon: Users, tone: 'text-primary-300' },
+                    { id: 'vip', label: t(lang, 'نزلاء VIP', 'VIP guests'), value: stats.vip, icon: Crown, tone: 'text-warning-500' },
+                    { id: 'corporate', label: guestTypeConfig.corporate.label[lang], value: stats.corporate, icon: Building2, tone: 'text-accent-300' },
+                    { id: 'blacklisted', label: t(lang, 'قائمة سوداء', 'Blacklisted'), value: stats.blacklisted, icon: ShieldAlert, tone: 'text-danger-500' },
+                    { id: 'stays', label: t(lang, 'إجمالي الإقامات', 'Total stays'), value: stats.stays, icon: CalendarCheck, tone: 'text-primary-300' },
+                    { id: 'revenue', label: t(lang, 'إجمالي الإنفاق', 'Total spend'), value: formatCurrency(stats.revenue), icon: DollarSign, tone: 'text-success-500' },
                 ].map((item) => (
-                    <div key={item.label} className="card p-4 flex items-center gap-3">
+                    <div key={item.id} className="card p-4 flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-white/5 border border-white/10">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
@@ -216,7 +200,7 @@ export default function GuestsPage() {
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                         <input
                             type="text"
-                            placeholder="ابحث بالاسم أو الهاتف أو البريد أو رقم الهوية..."
+                            placeholder={t(lang, 'ابحث بالاسم أو الهاتف أو البريد أو رقم الهوية...', 'Search by name, phone, email, or ID...')}
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             className="input pr-10"
@@ -228,10 +212,10 @@ export default function GuestsPage() {
                             onChange={(e) => setTypeFilter(e.target.value)}
                             className="input min-w-[160px]"
                         >
-                            <option value="">جميع الأنواع</option>
-                            <option value="individual">أفراد</option>
-                            <option value="corporate">شركات</option>
-                            <option value="vip">VIP</option>
+                            <option value="">{t(lang, 'جميع الأنواع', 'All types')}</option>
+                            <option value="individual">{guestTypeConfig.individual.label[lang]}</option>
+                            <option value="corporate">{guestTypeConfig.corporate.label[lang]}</option>
+                            <option value="vip">{guestTypeConfig.vip.label[lang]}</option>
                         </select>
                         <button
                             type="button"
@@ -239,17 +223,17 @@ export default function GuestsPage() {
                             className={`btn-secondary text-sm ${showBlacklisted ? 'bg-danger-500/20 text-danger-500 border-danger-500/30' : ''}`}
                         >
                             <ShieldAlert className="w-4 h-4" />
-                            القائمة السوداء
+                            {t(lang, 'القائمة السوداء', 'Blacklist')}
                         </button>
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                             className="input min-w-[160px]"
                         >
-                            <option value="name">الاسم</option>
-                            <option value="spent">الإنفاق</option>
-                            <option value="stays">الإقامات</option>
-                            <option value="recent">آخر إقامة</option>
+                            <option value="name">{t(lang, 'الاسم', 'Name')}</option>
+                            <option value="spent">{t(lang, 'الإنفاق', 'Spend')}</option>
+                            <option value="stays">{t(lang, 'الإقامات', 'Stays')}</option>
+                            <option value="recent">{t(lang, 'آخر إقامة', 'Last stay')}</option>
                         </select>
                         <button
                             type="button"
@@ -257,7 +241,9 @@ export default function GuestsPage() {
                             className="btn-secondary text-sm"
                         >
                             <ArrowUpDown className="w-4 h-4" />
-                            {sortDir === 'asc' ? 'تصاعدي' : 'تنازلي'}
+                            {sortDir === 'asc'
+                                ? t(lang, 'تصاعدي', 'Ascending')
+                                : t(lang, 'تنازلي', 'Descending')}
                         </button>
                         <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
                             <button
@@ -269,7 +255,7 @@ export default function GuestsPage() {
                                     }`}
                             >
                                 <LayoutGrid className="w-4 h-4" />
-                                شبكة
+                                {t(lang, 'شبكة', 'Grid')}
                             </button>
                             <button
                                 type="button"
@@ -280,7 +266,7 @@ export default function GuestsPage() {
                                     }`}
                             >
                                 <List className="w-4 h-4" />
-                                قائمة
+                                {t(lang, 'قائمة', 'List')}
                             </button>
                         </div>
                         <button
@@ -294,12 +280,16 @@ export default function GuestsPage() {
                             }}
                             className="btn-secondary text-sm"
                         >
-                            إعادة تعيين
+                            {t(lang, 'إعادة تعيين', 'Reset')}
                         </button>
                     </div>
                 </div>
                 <div className="mt-3 text-xs text-white/50">
-                    عرض {sortedGuests.length} من أصل {guests.length} نزيل
+                    {t(
+                        lang,
+                        `عرض ${sortedGuests.length} من أصل ${guests.length} نزيل`,
+                        `Showing ${sortedGuests.length} of ${guests.length} guests`
+                    )}
                 </div>
             </div>
 
@@ -312,11 +302,15 @@ export default function GuestsPage() {
                 <div className="card p-12 text-center">
                     <Users className="w-16 h-16 mx-auto text-white/30" />
                     <p className="mt-4 text-white/60">
-                        لا يوجد نزلاء{searchInput ? ' يطابقون البحث' : ''}.
+                        {t(
+                            lang,
+                            `لا يوجد نزلاء${searchInput ? ' يطابقون البحث' : ''}.`,
+                            `No guests${searchInput ? ' match your search' : ''}.`
+                        )}
                     </p>
                     <Link href="/dashboard/guests/new" className="btn-primary mt-4 inline-flex">
                         <Plus className="w-5 h-5" />
-                        <span>إضافة نزيل جديد</span>
+                        <span>{t(lang, 'إضافة نزيل جديد', 'Add New Guest')}</span>
                     </Link>
                 </div>
             ) : viewMode === 'grid' ? (
@@ -346,7 +340,7 @@ export default function GuestsPage() {
                                     </div>
                                     <span className={guestType.color}>
                                         <TypeIcon className="w-3 h-3 ml-1 inline" />
-                                        {guestType.label}
+                                        {guestType.label[lang]}
                                     </span>
                                 </div>
 
@@ -362,24 +356,24 @@ export default function GuestsPage() {
                                         </div>
                                     )}
                                     <div className="flex items-center justify-between text-white/60">
-                                        <span>الهوية</span>
+                                        <span>{t(lang, 'الهوية', 'ID')}</span>
                                         <span className="text-white">{guest.idNumber}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-white/60">
-                                        <span>آخر إقامة</span>
+                                        <span>{t(lang, 'آخر إقامة', 'Last stay')}</span>
                                         <span className="text-white">{formatDate(guest.lastStay)}</span>
                                     </div>
                                 </div>
 
                                 <div className="mt-4 pt-4 border-t border-white/5 flex justify-between text-sm">
                                     <div>
-                                        <span className="text-white/50">الإقامات</span>
+                                        <span className="text-white/50">{t(lang, 'الإقامات', 'Stays')}</span>
                                         <p className="font-semibold text-white">
                                             {guest.totalStays}
                                         </p>
                                     </div>
                                     <div className="text-left">
-                                        <span className="text-white/50">الإنفاق</span>
+                                        <span className="text-white/50">{t(lang, 'الإنفاق', 'Spend')}</span>
                                         <p className="font-semibold text-success-500">
                                             {formatCurrency(guest.totalSpent)}
                                         </p>
@@ -391,7 +385,7 @@ export default function GuestsPage() {
                                     className="btn-secondary w-full mt-4 text-sm"
                                 >
                                     <Eye className="w-4 h-4" />
-                                    <span>عرض التفاصيل</span>
+                                    <span>{t(lang, 'عرض التفاصيل', 'View Details')}</span>
                                 </Link>
                             </div>
                         );
@@ -402,13 +396,13 @@ export default function GuestsPage() {
                     <table className="table">
                         <thead>
                             <tr>
-                                <th>النزيل</th>
-                                <th>النوع</th>
-                                <th>الهاتف</th>
-                                <th>البريد</th>
-                                <th>الإقامات</th>
-                                <th>الإنفاق</th>
-                                <th>آخر إقامة</th>
+                                <th>{t(lang, 'النزيل', 'Guest')}</th>
+                                <th>{t(lang, 'النوع', 'Type')}</th>
+                                <th>{t(lang, 'الهاتف', 'Phone')}</th>
+                                <th>{t(lang, 'البريد', 'Email')}</th>
+                                <th>{t(lang, 'الإقامات', 'Stays')}</th>
+                                <th>{t(lang, 'الإنفاق', 'Spend')}</th>
+                                <th>{t(lang, 'آخر إقامة', 'Last stay')}</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -434,7 +428,7 @@ export default function GuestsPage() {
                                         <td>
                                             <span className={guestType.color}>
                                                 <TypeIcon className="w-3 h-3 ml-1 inline" />
-                                                {guestType.label}
+                                                {guestType.label[lang]}
                                             </span>
                                         </td>
                                         <td dir="ltr" className="text-white/60">{guest.phone}</td>

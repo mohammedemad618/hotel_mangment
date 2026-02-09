@@ -12,6 +12,8 @@ import {
     RefreshCcw,
 } from 'lucide-react';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 interface FinanceSummary {
     monthRevenue: number;
@@ -92,22 +94,23 @@ const defaultTransactionSummary: TransactionSummary = {
     count: 0,
 };
 
-const paymentStatusLabels: Record<string, { label: string; badge: string; tone: string }> = {
-    paid: { label: 'مدفوع', badge: 'badge-success', tone: 'text-success-500' },
-    partial: { label: 'جزئي', badge: 'badge-warning', tone: 'text-warning-500' },
-    pending: { label: 'معلق', badge: 'badge bg-white/10 text-white/60', tone: 'text-white/60' },
-    refunded: { label: 'مسترد', badge: 'badge-danger', tone: 'text-danger-500' },
+const paymentStatusLabels: Record<string, { label: { ar: string; en: string }; badge: string; tone: string }> = {
+    paid: { label: { ar: 'مدفوع', en: 'Paid' }, badge: 'badge-success', tone: 'text-success-500' },
+    partial: { label: { ar: 'جزئي', en: 'Partial' }, badge: 'badge-warning', tone: 'text-warning-500' },
+    pending: { label: { ar: 'معلق', en: 'Pending' }, badge: 'badge bg-white/10 text-white/60', tone: 'text-white/60' },
+    refunded: { label: { ar: 'مسترد', en: 'Refunded' }, badge: 'badge-danger', tone: 'text-danger-500' },
 };
 
-const paymentMethodLabels: Record<string, string> = {
-    cash: 'نقدي',
-    card: 'بطاقة',
-    bank_transfer: 'تحويل بنكي',
-    online: 'أونلاين',
+const paymentMethodLabels: Record<string, { ar: string; en: string }> = {
+    cash: { ar: 'نقدي', en: 'Cash' },
+    card: { ar: 'بطاقة', en: 'Card' },
+    bank_transfer: { ar: 'تحويل بنكي', en: 'Bank transfer' },
+    online: { ar: 'أونلاين', en: 'Online' },
 };
 
 export default function FinancePage() {
     const { settings: hotelSettings } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const [data, setData] = useState<FinanceData>(defaultData);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -140,25 +143,6 @@ export default function FinancePage() {
         fetchTransactions();
     }, [filters, page]);
 
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
-
     const fetchFinance = async () => {
         setLoading(true);
         setError(null);
@@ -166,12 +150,12 @@ export default function FinancePage() {
             const response = await fetchWithRefresh('/api/finance/overview');
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'تعذر تحميل بيانات المالية');
+                setError(result.error || t(lang, 'تعذر تحميل بيانات المالية', 'Failed to load finance data'));
                 return;
             }
             setData(result.data);
         } catch (err) {
-            setError('حدث خطأ في الاتصال بالخادم');
+            setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setLoading(false);
         }
@@ -184,12 +168,12 @@ export default function FinancePage() {
             const response = await fetchWithRefresh('/api/finance/trends?months=6');
             const result = await response.json();
             if (!response.ok) {
-                setTrendsError(result.error || 'تعذر تحميل التقارير الشهرية');
+                setTrendsError(result.error || t(lang, 'تعذر تحميل التقارير الشهرية', 'Failed to load monthly trends'));
                 return;
             }
             setTrends(result.data || []);
         } catch (err) {
-            setTrendsError('حدث خطأ في الاتصال بالخادم');
+            setTrendsError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setTrendsLoading(false);
         }
@@ -210,7 +194,7 @@ export default function FinancePage() {
             const response = await fetchWithRefresh(`/api/finance/transactions?${params}`);
             const result = await response.json();
             if (!response.ok) {
-                setTransactionsError(result.error || 'تعذر تحميل حركة المالية');
+                setTransactionsError(result.error || t(lang, 'تعذر تحميل حركة المالية', 'Failed to load transactions'));
                 return;
             }
 
@@ -219,10 +203,14 @@ export default function FinancePage() {
             setPages(result.pagination?.pages || 1);
             setTotalTransactions(result.pagination?.total || 0);
         } catch (err) {
-            setTransactionsError('حدث خطأ في الاتصال بالخادم');
+            setTransactionsError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setTransactionsLoading(false);
         }
+    };
+
+    const refreshAll = async () => {
+        await Promise.allSettled([fetchFinance(), fetchTrends(), fetchTransactions()]);
     };
 
     const formatCurrency = (amount: number) => {
@@ -263,19 +251,32 @@ export default function FinancePage() {
     const exportCsv = () => {
         if (transactions.length === 0) return;
 
-        const delimiter = hotelSettings?.language === 'en' ? ',' : ';';
-        const headers = [
-            'رقم الحجز',
-            'النزيل',
-            'الغرفة',
-            'إجمالي الحجز',
-            'المدفوع',
-            'المتبقي',
-            'آخر دفعة',
-            'طريقة الدفع',
-            'تاريخ العملية',
-            'حالة الدفع',
-        ];
+        const delimiter = lang === 'en' ? ',' : ';';
+        const headers = lang === 'en'
+            ? [
+                'Booking #',
+                'Guest',
+                'Room',
+                'Booking total',
+                'Paid',
+                'Remaining',
+                'Latest payment',
+                'Payment method',
+                'Transaction date',
+                'Payment status',
+            ]
+            : [
+                'رقم الحجز',
+                'النزيل',
+                'الغرفة',
+                'إجمالي الحجز',
+                'المدفوع',
+                'المتبقي',
+                'آخر دفعة',
+                'طريقة الدفع',
+                'تاريخ العملية',
+                'حالة الدفع',
+            ];
 
         const escapeValue = (value: string | number) => {
             const str = String(value ?? '').replace(/[\r\n]+/g, ' ');
@@ -290,9 +291,9 @@ export default function FinancePage() {
             escapeValue(formatCurrency(tx.paidAmount)),
             escapeValue(formatCurrency(tx.remaining)),
             escapeValue(formatCurrency(tx.latestAmount)),
-            escapeValue(paymentMethodLabels[tx.method] || tx.method),
+            escapeValue(paymentMethodLabels[tx.method]?.[lang] || tx.method),
             escapeValue(formatDateTime(tx.date)),
-            escapeValue(paymentStatusLabels[tx.status]?.label || 'معلق'),
+            escapeValue(paymentStatusLabels[tx.status]?.label?.[lang] || t(lang, 'معلق', 'Pending')),
         ]);
 
         const csvContent = [headers, ...rows].map((row) => row.join(delimiter)).join('\n');
@@ -332,15 +333,17 @@ export default function FinancePage() {
                         <Wallet className="w-6 h-6 text-primary-300" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">المالية</h1>
+                        <h1 className="text-2xl font-bold text-white">
+                            {t(lang, 'المالية', 'Finance')}
+                        </h1>
                         <p className="text-white/60">
-                            متابعة الإيرادات والتحصيل وحالة المدفوعات.
+                            {t(lang, 'متابعة الإيرادات والتحصيل وحالة المدفوعات.', 'Track revenue, collections, and payment status.')}
                         </p>
                     </div>
                 </div>
-                <button onClick={fetchFinance} className="btn-secondary">
+                <button onClick={refreshAll} className="btn-secondary">
                     <RefreshCcw className="w-4 h-4" />
-                    تحديث البيانات
+                    {t(lang, 'تحديث البيانات', 'Refresh')}
                 </button>
             </div>
 
@@ -352,21 +355,31 @@ export default function FinancePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <div className="card p-5">
-                    <p className="text-sm text-white/50">إيرادات هذا الشهر</p>
+                    <p className="text-sm text-white/50">
+                        {t(lang, 'إيرادات هذا الشهر', 'This Month Revenue')}
+                    </p>
                     <p className="mt-2 text-2xl font-bold text-success-500">
                         {formatCurrency(data.summary.monthRevenue)}
                     </p>
                     {revenueTrend ? (
                         <div className={`mt-2 flex items-center gap-2 text-xs ${revenueTrend.isUp ? 'text-success-400' : 'text-danger-400'}`}>
                             {revenueTrend.isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            {revenueTrend.isUp ? 'زيادة' : 'انخفاض'} بنسبة {Math.abs(revenueTrend.percent)}% عن الشهر الماضي
+                            {t(
+                                lang,
+                                `${revenueTrend.isUp ? 'زيادة' : 'انخفاض'} بنسبة ${Math.abs(revenueTrend.percent)}% عن الشهر الماضي`,
+                                `${revenueTrend.isUp ? 'Up' : 'Down'} ${Math.abs(revenueTrend.percent)}% vs last month`
+                            )}
                         </div>
                     ) : (
-                        <div className="mt-2 text-xs text-white/40">لا توجد بيانات مقارنة للشهر الماضي</div>
+                        <div className="mt-2 text-xs text-white/40">
+                            {t(lang, 'لا توجد بيانات مقارنة للشهر الماضي', 'No comparison data for last month')}
+                        </div>
                     )}
                 </div>
                 <div className="card p-5">
-                    <p className="text-sm text-white/50">المدفوعات المستلمة</p>
+                    <p className="text-sm text-white/50">
+                        {t(lang, 'المدفوعات المستلمة', 'Payments Received')}
+                    </p>
                     <p className="mt-2 text-2xl font-bold text-primary-300">
                         {formatCurrency(data.summary.monthPaid)}
                     </p>
@@ -376,31 +389,43 @@ export default function FinancePage() {
                             style={{ width: `${paidRate}%` }}
                         />
                     </div>
-                    <div className="mt-2 text-xs text-white/40">نسبة التحصيل {paidRate}%</div>
+                    <div className="mt-2 text-xs text-white/40">
+                        {t(lang, `نسبة التحصيل ${paidRate}%`, `Collection rate ${paidRate}%`)}
+                    </div>
                 </div>
                 <div className="card p-5">
-                    <p className="text-sm text-white/50">المتبقي للتحصيل</p>
+                    <p className="text-sm text-white/50">
+                        {t(lang, 'المتبقي للتحصيل', 'Outstanding Balance')}
+                    </p>
                     <p className="mt-2 text-2xl font-bold text-warning-500">
                         {formatCurrency(data.summary.outstandingBalance)}
                     </p>
                     <div className="mt-2 text-xs text-white/40">
-                        بناءً على الحجوزات غير المسددة بالكامل.
+                        {t(lang, 'بناءً على الحجوزات غير المسددة بالكامل.', 'Based on bookings not fully paid.')}
                     </div>
                 </div>
                 <div className="card p-5">
-                    <p className="text-sm text-white/50">إجمالي الحجوزات</p>
+                    <p className="text-sm text-white/50">
+                        {t(lang, 'إجمالي الحجوزات', 'Total Bookings')}
+                    </p>
                     <p className="mt-2 text-2xl font-bold text-white">
                         {data.summary.totalBookings}
                     </p>
-                    <div className="mt-2 text-xs text-white/40">الحجوزات النشطة هذا الموسم.</div>
+                    <div className="mt-2 text-xs text-white/40">
+                        {t(lang, 'الحجوزات النشطة هذا الموسم.', 'Active bookings this season.')}
+                    </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="card p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-white">???????? ???????</h2>
-                        <span className="text-xs text-white/50">??? 6 ????</span>
+                        <h2 className="text-lg font-semibold text-white">
+                            {t(lang, 'إيرادات الأشهر', 'Monthly Revenue')}
+                        </h2>
+                        <span className="text-xs text-white/50">
+                            {t(lang, 'آخر 6 أشهر', 'Last 6 months')}
+                        </span>
                     </div>
                     {trendsError && (
                         <div className="p-3 mb-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm">
@@ -413,7 +438,7 @@ export default function FinancePage() {
                         </div>
                     ) : trends.length === 0 ? (
                         <div className="text-center text-white/60 py-8">
-                            ?? ???? ?????? ????? ?????? ????????.
+                            {t(lang, 'لا توجد بيانات لعرضها خلال الفترة المحددة.', 'No data to display for the selected period.')}
                         </div>
                     ) : (
                         <>
@@ -441,33 +466,37 @@ export default function FinancePage() {
                             <div className="mt-4 flex items-center gap-6 text-xs text-white/50">
                                 <div className="flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full bg-gradient-to-r from-primary-500 to-accent-500" />
-                                    ?????? ?????????
+                                    {t(lang, 'إجمالي الإيرادات', 'Revenue')}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full bg-success-500" />
-                                    ??????? ???????
+                                    {t(lang, 'المدفوعات المستلمة', 'Paid')}
                                 </div>
                             </div>
                         </>
                     )}
                 </div>
                 <div className="card p-6">
-                    <h2 className="text-lg font-semibold text-white mb-4">?????? ??????</h2>
+                    <h2 className="text-lg font-semibold text-white mb-4">
+                        {t(lang, 'تفاصيل الأشهر', 'Monthly Details')}
+                    </h2>
                     <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                         {trends.map((trend) => (
                             <div key={trend.month} className="p-3 rounded-xl bg-white/5 border border-white/10">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-white/70">{formatMonthLabel(trend.month)}</span>
-                                    <span className="text-xs text-white/50">{trend.bookings} ???</span>
+                                    <span className="text-xs text-white/50">
+                                        {t(lang, `${trend.bookings} حجز`, `${trend.bookings} bookings`)}
+                                    </span>
                                 </div>
                                 <div className="mt-2 text-xs text-white/50">
-                                    ?????????: <span className="text-white/80">{formatCurrency(trend.revenue)}</span>
+                                    {t(lang, 'الإيرادات', 'Revenue')}: <span className="text-white/80">{formatCurrency(trend.revenue)}</span>
                                 </div>
                                 <div className="mt-1 text-xs text-white/50">
-                                    ??????: <span className="text-white/80">{formatCurrency(trend.paid)}</span>
+                                    {t(lang, 'المدفوع', 'Paid')}: <span className="text-white/80">{formatCurrency(trend.paid)}</span>
                                 </div>
                                 <div className="mt-1 text-xs text-white/50">
-                                    ???????: <span className="text-white/80">{formatCurrency(trend.outstanding)}</span>
+                                    {t(lang, 'المستحق', 'Outstanding')}: <span className="text-white/80">{formatCurrency(trend.outstanding)}</span>
                                 </div>
                             </div>
                         ))}
@@ -478,9 +507,11 @@ export default function FinancePage() {
             <div className="card p-5">
                 <div className="flex flex-col xl:flex-row xl:items-end gap-4">
                     <div className="flex-1">
-                        <h2 className="text-lg font-semibold text-white">تصفية الحركة المالية</h2>
+                        <h2 className="text-lg font-semibold text-white">
+                            {t(lang, 'تصفية الحركة المالية', 'Filter Transactions')}
+                        </h2>
                         <p className="text-xs text-white/50 mt-1">
-                            يمكنك تحديد الفترة وحالة الدفع وطريقة الدفع لتصفية النتائج.
+                            {t(lang, 'يمكنك تحديد الفترة وحالة الدفع وطريقة الدفع لتصفية النتائج.', 'Select a date range, payment status, and method to filter results.')}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -510,11 +541,11 @@ export default function FinancePage() {
                             }}
                             className="input min-w-[150px]"
                         >
-                            <option value="">كل حالات الدفع</option>
-                            <option value="paid">مدفوع</option>
-                            <option value="partial">جزئي</option>
-                            <option value="pending">معلق</option>
-                            <option value="refunded">مسترد</option>
+                            <option value="">{t(lang, 'كل حالات الدفع', 'All payment statuses')}</option>
+                            <option value="paid">{paymentStatusLabels.paid.label[lang]}</option>
+                            <option value="partial">{paymentStatusLabels.partial.label[lang]}</option>
+                            <option value="pending">{paymentStatusLabels.pending.label[lang]}</option>
+                            <option value="refunded">{paymentStatusLabels.refunded.label[lang]}</option>
                         </select>
                         <select
                             value={filters.method}
@@ -524,11 +555,11 @@ export default function FinancePage() {
                             }}
                             className="input min-w-[160px]"
                         >
-                            <option value="">كل طرق الدفع</option>
-                            <option value="cash">نقدي</option>
-                            <option value="card">بطاقة</option>
-                            <option value="bank_transfer">تحويل بنكي</option>
-                            <option value="online">أونلاين</option>
+                            <option value="">{t(lang, 'كل طرق الدفع', 'All methods')}</option>
+                            <option value="cash">{paymentMethodLabels.cash[lang]}</option>
+                            <option value="card">{paymentMethodLabels.card[lang]}</option>
+                            <option value="bank_transfer">{paymentMethodLabels.bank_transfer[lang]}</option>
+                            <option value="online">{paymentMethodLabels.online[lang]}</option>
                         </select>
                         <button
                             type="button"
@@ -538,25 +569,25 @@ export default function FinancePage() {
                             }}
                             className="btn-secondary"
                         >
-                            إعادة تعيين
+                            {t(lang, 'إعادة تعيين', 'Reset')}
                         </button>
                         <button
                             type="button"
                             onClick={exportCsv}
                             className="btn-primary"
                         >
-                            تصدير CSV
+                            {t(lang, 'تصدير CSV', 'Export CSV')}
                         </button>
                     </div>
                 </div>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     {[
-                        { label: 'إجمالي الفترة', value: formatCurrency(transactionsSummary.totalAmount), tone: 'text-success-500' },
-                        { label: 'المدفوع', value: formatCurrency(transactionsSummary.totalPaid), tone: 'text-primary-300' },
-                        { label: 'المتبقي', value: formatCurrency(transactionsSummary.totalOutstanding), tone: 'text-warning-500' },
-                        { label: 'عدد الحجوزات', value: transactionsSummary.count, tone: 'text-white' },
+                        { id: 'total', label: t(lang, 'إجمالي الفترة', 'Period total'), value: formatCurrency(transactionsSummary.totalAmount), tone: 'text-success-500' },
+                        { id: 'paid', label: t(lang, 'المدفوع', 'Paid'), value: formatCurrency(transactionsSummary.totalPaid), tone: 'text-primary-300' },
+                        { id: 'outstanding', label: t(lang, 'المتبقي', 'Outstanding'), value: formatCurrency(transactionsSummary.totalOutstanding), tone: 'text-warning-500' },
+                        { id: 'count', label: t(lang, 'عدد الحجوزات', 'Bookings'), value: transactionsSummary.count, tone: 'text-white' },
                     ].map((item) => (
-                        <div key={item.label} className="card p-4 flex items-center justify-between">
+                        <div key={item.id} className="card p-4 flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-white/50">{item.label}</p>
                                 <p className={`text-lg font-semibold ${item.tone}`}>{item.value}</p>
@@ -569,14 +600,16 @@ export default function FinancePage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="card p-6 lg:col-span-2">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-white">تحليل التحصيل</h2>
+                        <h2 className="text-lg font-semibold text-white">
+                            {t(lang, 'تحليل التحصيل', 'Collections Analysis')}
+                        </h2>
                         <DollarSign className="w-5 h-5 text-success-500" />
                     </div>
                     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <CheckCircle2 className="w-4 h-4 text-success-500" />
-                                المدفوعات المكتملة
+                                {t(lang, 'المدفوعات المكتملة', 'Completed Payments')}
                             </div>
                             <p className="mt-2 text-xl font-semibold text-white">
                                 {data.summary.paidBookings}
@@ -585,7 +618,7 @@ export default function FinancePage() {
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <AlertCircle className="w-4 h-4 text-warning-500" />
-                                المدفوعات الجزئية
+                                {t(lang, 'المدفوعات الجزئية', 'Partial Payments')}
                             </div>
                             <p className="mt-2 text-xl font-semibold text-white">
                                 {data.summary.partialBookings}
@@ -594,7 +627,7 @@ export default function FinancePage() {
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <Clock className="w-4 h-4 text-primary-300" />
-                                المدفوعات المعلقة
+                                {t(lang, 'المدفوعات المعلقة', 'Pending Payments')}
                             </div>
                             <p className="mt-2 text-xl font-semibold text-white">
                                 {data.summary.pendingBookings}
@@ -603,7 +636,7 @@ export default function FinancePage() {
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                             <div className="flex items-center gap-2 text-sm text-white/60">
                                 <AlertCircle className="w-4 h-4 text-danger-500" />
-                                المدفوعات المستردة
+                                {t(lang, 'المدفوعات المستردة', 'Refunded Payments')}
                             </div>
                             <p className="mt-2 text-xl font-semibold text-white">
                                 {data.summary.refundedBookings}
@@ -612,7 +645,9 @@ export default function FinancePage() {
                     </div>
                 </div>
                 <div className="card p-6">
-                    <h2 className="text-lg font-semibold text-white mb-4">توزيع الحالة</h2>
+                    <h2 className="text-lg font-semibold text-white mb-4">
+                        {t(lang, 'توزيع الحالة', 'Status Breakdown')}
+                    </h2>
                     <div className="space-y-3 text-sm">
                         {[
                             { key: 'paid', value: data.summary.paidBookings },
@@ -623,7 +658,7 @@ export default function FinancePage() {
                             const status = paymentStatusLabels[item.key];
                             return (
                                 <div key={item.key} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                                    <span className="text-white/70">{status.label}</span>
+                                    <span className="text-white/70">{status.label[lang]}</span>
                                     <span className={status.badge}>{item.value}</span>
                                 </div>
                             );
@@ -634,7 +669,9 @@ export default function FinancePage() {
 
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-white">الدفعات الأخيرة</h2>
+                    <h2 className="text-lg font-semibold text-white">
+                        {t(lang, 'الدفعات الأخيرة', 'Recent Payments')}
+                    </h2>
                 </div>
 
                 {loading ? (
@@ -643,20 +680,20 @@ export default function FinancePage() {
                     </div>
                 ) : data.recentPayments.length === 0 ? (
                     <div className="text-center text-white/60 py-8">
-                        لا توجد دفعات مسجلة حتى الآن.
+                        {t(lang, 'لا توجد دفعات مسجلة حتى الآن.', 'No payments recorded yet.')}
                     </div>
                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>رقم الحجز</th>
-                                    <th>النزيل</th>
-                                    <th>الغرفة</th>
-                                    <th>المبلغ</th>
-                                    <th>طريقة الدفع</th>
-                                    <th>التاريخ</th>
-                                    <th>الحالة</th>
+                                    <th>{t(lang, 'رقم الحجز', 'Booking #')}</th>
+                                    <th>{t(lang, 'النزيل', 'Guest')}</th>
+                                    <th>{t(lang, 'الغرفة', 'Room')}</th>
+                                    <th>{t(lang, 'المبلغ', 'Amount')}</th>
+                                    <th>{t(lang, 'طريقة الدفع', 'Method')}</th>
+                                    <th>{t(lang, 'التاريخ', 'Date')}</th>
+                                    <th>{t(lang, 'الحالة', 'Status')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -669,11 +706,11 @@ export default function FinancePage() {
                                             <td className="text-white/60">{payment.roomNumber || '-'}</td>
                                             <td className="text-primary-300">{formatCurrency(payment.amount)}</td>
                                             <td className="text-white/60">
-                                                {paymentMethodLabels[payment.method] || payment.method}
+                                                {paymentMethodLabels[payment.method]?.[lang] || payment.method}
                                             </td>
                                             <td className="text-white/60">{formatDateTime(payment.date)}</td>
                                             <td>
-                                                <span className={status.badge}>{status.label}</span>
+                                                <span className={status.badge}>{status.label[lang]}</span>
                                             </td>
                                         </tr>
                                     );
@@ -686,9 +723,15 @@ export default function FinancePage() {
 
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-white">حركة المدفوعات</h2>
+                    <h2 className="text-lg font-semibold text-white">
+                        {t(lang, 'حركة المدفوعات', 'Payment Activity')}
+                    </h2>
                     <span className="text-xs text-white/50">
-                        عرض {transactions.length} من أصل {totalTransactions}
+                        {t(
+                            lang,
+                            `عرض ${transactions.length} من أصل ${totalTransactions}`,
+                            `Showing ${transactions.length} of ${totalTransactions}`
+                        )}
                     </span>
                 </div>
 
@@ -704,23 +747,23 @@ export default function FinancePage() {
                     </div>
                 ) : transactions.length === 0 ? (
                     <div className="text-center text-white/60 py-8">
-                        لا توجد عمليات ضمن الفترة المحددة.
+                        {t(lang, 'لا توجد عمليات ضمن الفترة المحددة.', 'No transactions in the selected period.')}
                     </div>
                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>رقم الحجز</th>
-                                    <th>النزيل</th>
-                                    <th>الغرفة</th>
-                                    <th>الإجمالي</th>
-                                    <th>المدفوع</th>
-                                    <th>المتبقي</th>
-                                    <th>آخر دفعة</th>
-                                    <th>طريقة الدفع</th>
-                                    <th>التاريخ</th>
-                                    <th>الحالة</th>
+                                    <th>{t(lang, 'رقم الحجز', 'Booking #')}</th>
+                                    <th>{t(lang, 'النزيل', 'Guest')}</th>
+                                    <th>{t(lang, 'الغرفة', 'Room')}</th>
+                                    <th>{t(lang, 'الإجمالي', 'Total')}</th>
+                                    <th>{t(lang, 'المدفوع', 'Paid')}</th>
+                                    <th>{t(lang, 'المتبقي', 'Remaining')}</th>
+                                    <th>{t(lang, 'آخر دفعة', 'Latest payment')}</th>
+                                    <th>{t(lang, 'طريقة الدفع', 'Method')}</th>
+                                    <th>{t(lang, 'التاريخ', 'Date')}</th>
+                                    <th>{t(lang, 'الحالة', 'Status')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -736,11 +779,11 @@ export default function FinancePage() {
                                             <td className="text-warning-500">{formatCurrency(tx.remaining)}</td>
                                             <td className="text-white/70">{formatCurrency(tx.latestAmount)}</td>
                                             <td className="text-white/60">
-                                                {paymentMethodLabels[tx.method] || tx.method}
+                                                {paymentMethodLabels[tx.method]?.[lang] || tx.method}
                                             </td>
                                             <td className="text-white/60">{formatDateTime(tx.date)}</td>
                                             <td>
-                                                <span className={status.badge}>{status.label}</span>
+                                                <span className={status.badge}>{status.label[lang]}</span>
                                             </td>
                                         </tr>
                                     );
@@ -752,7 +795,7 @@ export default function FinancePage() {
 
                 <div className="mt-4 flex items-center justify-between">
                     <span className="text-xs text-white/40">
-                        صفحة {page} من {pages}
+                        {t(lang, `صفحة ${page} من ${pages}`, `Page ${page} of ${pages}`)}
                     </span>
                     <div className="flex items-center gap-2">
                         <button
@@ -761,7 +804,7 @@ export default function FinancePage() {
                             className="btn-secondary text-sm"
                             disabled={page <= 1}
                         >
-                            السابق
+                            {t(lang, 'السابق', 'Prev')}
                         </button>
                         <button
                             type="button"
@@ -769,7 +812,7 @@ export default function FinancePage() {
                             className="btn-secondary text-sm"
                             disabled={page >= pages}
                         >
-                            التالي
+                            {t(lang, 'التالي', 'Next')}
                         </button>
                     </div>
                 </div>

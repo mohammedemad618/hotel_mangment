@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 import {
     ArrowRight,
     User,
@@ -42,37 +44,52 @@ interface GuestDetail {
 }
 
 const nationalities = [
-    'سعودي', 'إماراتي', 'كويتي', 'بحريني', 'قطري', 'عماني',
-    'مصري', 'أردني', 'لبناني', 'سوري', 'عراقي', 'يمني',
-    'أمريكي', 'بريطاني', 'فرنسي', 'ألماني', 'أخرى',
+    { value: 'سعودي', label: { ar: 'سعودي', en: 'Saudi' } },
+    { value: 'إماراتي', label: { ar: 'إماراتي', en: 'Emirati' } },
+    { value: 'كويتي', label: { ar: 'كويتي', en: 'Kuwaiti' } },
+    { value: 'بحريني', label: { ar: 'بحريني', en: 'Bahraini' } },
+    { value: 'قطري', label: { ar: 'قطري', en: 'Qatari' } },
+    { value: 'عماني', label: { ar: 'عماني', en: 'Omani' } },
+    { value: 'مصري', label: { ar: 'مصري', en: 'Egyptian' } },
+    { value: 'أردني', label: { ar: 'أردني', en: 'Jordanian' } },
+    { value: 'لبناني', label: { ar: 'لبناني', en: 'Lebanese' } },
+    { value: 'سوري', label: { ar: 'سوري', en: 'Syrian' } },
+    { value: 'عراقي', label: { ar: 'عراقي', en: 'Iraqi' } },
+    { value: 'يمني', label: { ar: 'يمني', en: 'Yemeni' } },
+    { value: 'أمريكي', label: { ar: 'أمريكي', en: 'American' } },
+    { value: 'بريطاني', label: { ar: 'بريطاني', en: 'British' } },
+    { value: 'فرنسي', label: { ar: 'فرنسي', en: 'French' } },
+    { value: 'ألماني', label: { ar: 'ألماني', en: 'German' } },
+    { value: 'أخرى', label: { ar: 'أخرى', en: 'Other' } },
 ];
 
 const idTypes = [
-    { value: 'national_id', label: 'هوية وطنية' },
-    { value: 'passport', label: 'جواز سفر' },
-    { value: 'driver_license', label: 'رخصة قيادة' },
+    { value: 'national_id', label: { ar: 'هوية وطنية', en: 'National ID' } },
+    { value: 'passport', label: { ar: 'جواز سفر', en: 'Passport' } },
+    { value: 'driver_license', label: { ar: 'رخصة قيادة', en: 'Driver license' } },
 ];
 
 const guestTypes = [
-    { value: 'individual', label: 'فردي', icon: User },
-    { value: 'corporate', label: 'شركات', icon: Building2 },
-    { value: 'vip', label: 'VIP', icon: Crown },
+    { value: 'individual', label: { ar: 'فردي', en: 'Individual' }, icon: User },
+    { value: 'corporate', label: { ar: 'شركات', en: 'Corporate' }, icon: Building2 },
+    { value: 'vip', label: { ar: 'VIP', en: 'VIP' }, icon: Crown },
 ];
 
-const guestTypeConfig: Record<string, { label: string; color: string; icon: any }> = {
-    individual: { label: 'فردي', color: 'badge-primary', icon: User },
-    corporate: { label: 'شركات', color: 'badge bg-accent-500/15 text-accent-300', icon: Building2 },
-    vip: { label: 'VIP', color: 'badge bg-warning-500/15 text-warning-500', icon: Crown },
+const guestTypeConfig: Record<string, { label: { ar: string; en: string }; color: string; icon: any }> = {
+    individual: { label: { ar: 'فردي', en: 'Individual' }, color: 'badge-primary', icon: User },
+    corporate: { label: { ar: 'شركات', en: 'Corporate' }, color: 'badge bg-accent-500/15 text-accent-300', icon: Building2 },
+    vip: { label: { ar: 'VIP', en: 'VIP' }, color: 'badge bg-warning-500/15 text-warning-500', icon: Crown },
 };
 
-const idTypeLabels: Record<string, string> = {
-    passport: 'جواز سفر',
-    national_id: 'هوية وطنية',
-    driver_license: 'رخصة قيادة',
+const idTypeLabels: Record<string, { ar: string; en: string }> = {
+    passport: { ar: 'جواز سفر', en: 'Passport' },
+    national_id: { ar: 'هوية وطنية', en: 'National ID' },
+    driver_license: { ar: 'رخصة قيادة', en: 'Driver license' },
 };
 
 export default function GuestDetailsPage() {
     const { settings: hotelSettings } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const { id } = useParams() as { id: string };
     const router = useRouter();
     const [guest, setGuest] = useState<GuestDetail | null>(null);
@@ -96,25 +113,6 @@ export default function GuestDetailsPage() {
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
-
     useEffect(() => {
         const fetchGuest = async () => {
             try {
@@ -122,13 +120,13 @@ export default function GuestDetailsPage() {
                 const data = await response.json();
 
                 if (!response.ok) {
-                    setError(data.error || 'تعذر جلب بيانات النزيل');
+                    setError(data.error || t(lang, 'تعذر جلب بيانات النزيل', 'Failed to load guest details'));
                     return;
                 }
 
                 setGuest(data.data);
             } catch (err) {
-                setError('حدث خطأ في الاتصال بالخادم');
+                setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
             } finally {
                 setLoading(false);
             }
@@ -226,15 +224,15 @@ export default function GuestDetailsPage() {
 
             const data = await response.json();
             if (!response.ok) {
-                setSaveError(data.error || 'تعذر تحديث بيانات النزيل');
+                setSaveError(data.error || t(lang, 'تعذر تحديث بيانات النزيل', 'Failed to update guest details'));
                 return;
             }
 
             setGuest(data.data);
             setIsEditing(false);
-            setSaveSuccess('تم تحديث بيانات النزيل بنجاح');
+            setSaveSuccess(t(lang, 'تم تحديث بيانات النزيل بنجاح', 'Guest details updated successfully'));
         } catch (err) {
-            setSaveError('حدث خطأ في الاتصال بالخادم');
+            setSaveError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setSaving(false);
         }
@@ -251,9 +249,9 @@ export default function GuestDetailsPage() {
     if (error || !guest) {
         return (
             <div className="card p-8 text-center">
-                <p className="text-danger-600">{error || 'النزيل غير موجود'}</p>
+                <p className="text-danger-600">{error || t(lang, 'النزيل غير موجود', 'Guest not found')}</p>
                 <button onClick={() => router.back()} className="btn-secondary mt-4">
-                    العودة
+                    {t(lang, 'العودة', 'Back')}
                 </button>
             </div>
         );
@@ -273,7 +271,7 @@ export default function GuestDetailsPage() {
                 </button>
                 <div>
                     <h1 className="text-2xl font-bold text-white">
-                        تفاصيل النزيل
+                        {t(lang, 'تفاصيل النزيل', 'Guest Details')}
                     </h1>
                     <p className="mt-1 text-white/60">
                         {guest.firstName} {guest.lastName}
@@ -284,7 +282,13 @@ export default function GuestDetailsPage() {
             {guest.isBlacklisted && (
                 <div className="p-4 rounded-2xl border border-danger-500/30 bg-danger-500/10 text-danger-500 flex items-center gap-2">
                     <ShieldAlert className="w-5 h-5" />
-                    <span>هذا النزيل مدرج في القائمة السوداء. يرجى توخي الحذر عند التعامل.</span>
+                    <span>
+                        {t(
+                            lang,
+                            'هذا النزيل مدرج في القائمة السوداء. يرجى توخي الحذر عند التعامل.',
+                            'This guest is blacklisted. Please handle with care.'
+                        )}
+                    </span>
                 </div>
             )}
 
@@ -311,7 +315,7 @@ export default function GuestDetailsPage() {
                             </div>
                             <span className={typeInfo.color}>
                                 <TypeIcon className="w-3 h-3 ml-1 inline" />
-                                {typeInfo.label}
+                                {typeInfo.label[lang]}
                             </span>
                         </div>
 
@@ -329,7 +333,7 @@ export default function GuestDetailsPage() {
                                 )}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">الاسم الأول</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'الاسم الأول', 'First name')}</label>
                                         <input
                                             className="input"
                                             value={formData.firstName}
@@ -337,7 +341,7 @@ export default function GuestDetailsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">الاسم الأخير</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'الاسم الأخير', 'Last name')}</label>
                                         <input
                                             className="input"
                                             value={formData.lastName}
@@ -345,7 +349,7 @@ export default function GuestDetailsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">رقم الهاتف</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'رقم الهاتف', 'Phone')}</label>
                                         <input
                                             className="input"
                                             dir="ltr"
@@ -354,7 +358,7 @@ export default function GuestDetailsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">البريد الإلكتروني</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'البريد الإلكتروني', 'Email')}</label>
                                         <input
                                             className="input"
                                             dir="ltr"
@@ -363,7 +367,7 @@ export default function GuestDetailsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">تاريخ الميلاد</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'تاريخ الميلاد', 'Date of birth')}</label>
                                         <input
                                             className="input"
                                             type="date"
@@ -372,32 +376,32 @@ export default function GuestDetailsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">الجنسية</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'الجنسية', 'Nationality')}</label>
                                         <select
                                             className="input"
                                             value={formData.nationality}
                                             onChange={(e) => handleChange('nationality', e.target.value)}
                                         >
-                                            <option value="">اختر الجنسية</option>
+                                            <option value="">{t(lang, 'اختر الجنسية', 'Select nationality')}</option>
                                             {nationalities.map((nat) => (
-                                                <option key={nat} value={nat}>{nat}</option>
+                                                <option key={nat.value} value={nat.value}>{nat.label[lang]}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">نوع الهوية</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'نوع الهوية', 'ID type')}</label>
                                         <select
                                             className="input"
                                             value={formData.idType}
                                             onChange={(e) => handleChange('idType', e.target.value)}
                                         >
                                             {idTypes.map((type) => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
+                                                <option key={type.value} value={type.value}>{type.label[lang]}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">رقم الهوية</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'رقم الهوية', 'ID number')}</label>
                                         <input
                                             className="input"
                                             dir="ltr"
@@ -406,20 +410,20 @@ export default function GuestDetailsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-white/60 mb-2">نوع النزيل</label>
+                                        <label className="block text-xs text-white/60 mb-2">{t(lang, 'نوع النزيل', 'Guest type')}</label>
                                         <select
                                             className="input"
                                             value={formData.guestType}
                                             onChange={(e) => handleChange('guestType', e.target.value)}
                                         >
                                             {guestTypes.map((type) => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
+                                                <option key={type.value} value={type.value}>{type.label[lang]}</option>
                                             ))}
                                         </select>
                                     </div>
                                     {formData.guestType === 'corporate' && (
                                         <div>
-                                            <label className="block text-xs text-white/60 mb-2">اسم الشركة</label>
+                                            <label className="block text-xs text-white/60 mb-2">{t(lang, 'اسم الشركة', 'Company name')}</label>
                                             <input
                                                 className="input"
                                                 value={formData.companyName}
@@ -429,7 +433,7 @@ export default function GuestDetailsPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-white/60 mb-2">ملاحظات</label>
+                                    <label className="block text-xs text-white/60 mb-2">{t(lang, 'ملاحظات', 'Notes')}</label>
                                     <textarea
                                         className="input min-h-[120px]"
                                         value={formData.notes}
@@ -449,7 +453,7 @@ export default function GuestDetailsPage() {
                                         disabled={saving}
                                     >
                                         <X className="w-4 h-4" />
-                                        إلغاء
+                                        {t(lang, 'إلغاء', 'Cancel')}
                                     </button>
                                     <button
                                         type="button"
@@ -458,7 +462,7 @@ export default function GuestDetailsPage() {
                                         disabled={saving}
                                     >
                                         <Save className="w-4 h-4" />
-                                        حفظ التعديلات
+                                        {t(lang, 'حفظ التعديلات', 'Save changes')}
                                     </button>
                                 </div>
                             </div>
@@ -481,36 +485,38 @@ export default function GuestDetailsPage() {
                                 <div className="flex items-center gap-2 text-white/60">
                                     <CreditCard className="w-4 h-4" />
                                     <span>
-                                        {idTypeLabels[guest.idType] || guest.idType} - {guest.idNumber}
+                                        {(idTypeLabels[guest.idType]?.[lang] || guest.idType)} - {guest.idNumber}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-white/60">
                                     <CalendarCheck className="w-4 h-4" />
-                                    <span>تاريخ الميلاد: {formatDate(guest.dateOfBirth)}</span>
+                                    <span>{t(lang, 'تاريخ الميلاد', 'Date of birth')}: {formatDate(guest.dateOfBirth)}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-white/60">
                                     <Clock className="w-4 h-4" />
-                                    <span>آخر إقامة: {formatDate(guest.lastStay)}</span>
+                                    <span>{t(lang, 'آخر إقامة', 'Last stay')}: {formatDate(guest.lastStay)}</span>
                                 </div>
                             </div>
                         )}
 
                         {guest.companyName && (
                             <div className="mt-4 text-sm text-white/60">
-                                الشركة: <span className="font-medium text-white">{guest.companyName}</span>
+                                {t(lang, 'الشركة', 'Company')}: <span className="font-medium text-white">{guest.companyName}</span>
                             </div>
                         )}
                     </div>
 
                     <div className="card p-6">
-                        <h3 className="text-lg font-semibold text-white mb-4">ملاحظات النزيل</h3>
+                        <h3 className="text-lg font-semibold text-white mb-4">
+                            {t(lang, 'ملاحظات النزيل', 'Guest Notes')}
+                        </h3>
                         {isEditing ? (
                             <p className="text-white/60">
-                                يمكنك تحديث الملاحظات من نموذج التعديل بالأعلى.
+                                {t(lang, 'يمكنك تحديث الملاحظات من نموذج التعديل بالأعلى.', 'You can edit notes using the form above.')}
                             </p>
                         ) : (
                             <p className="text-white/60">
-                                {guest.notes || 'لا توجد ملاحظات مسجلة لهذا النزيل.'}
+                                {guest.notes || t(lang, 'لا توجد ملاحظات مسجلة لهذا النزيل.', 'No notes recorded for this guest.')}
                             </p>
                         )}
                     </div>
@@ -518,26 +524,28 @@ export default function GuestDetailsPage() {
 
                 <div className="space-y-6">
                     <div className="card p-6 space-y-4">
-                        <h3 className="text-sm font-medium text-white/70">إحصائيات النزيل</h3>
+                        <h3 className="text-sm font-medium text-white/70">
+                            {t(lang, 'إحصائيات النزيل', 'Guest Stats')}
+                        </h3>
                         <div className="grid grid-cols-1 gap-3">
                             <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/60">
                                     <CalendarCheck className="w-4 h-4" />
-                                    <span>عدد الإقامات</span>
+                                    <span>{t(lang, 'عدد الإقامات', 'Stays')}</span>
                                 </div>
                                 <span className="font-semibold text-white">{guest.totalStays}</span>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/60">
                                     <DollarSign className="w-4 h-4" />
-                                    <span>إجمالي الإنفاق</span>
+                                    <span>{t(lang, 'إجمالي الإنفاق', 'Total spend')}</span>
                                 </div>
                                 <span className="font-semibold text-success-500">{formatCurrency(guest.totalSpent)}</span>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/60">
                                     <Clock className="w-4 h-4" />
-                                    <span>آخر إقامة</span>
+                                    <span>{t(lang, 'آخر إقامة', 'Last stay')}</span>
                                 </div>
                                 <span className="font-semibold text-white">{formatDate(guest.lastStay)}</span>
                             </div>
@@ -545,13 +553,15 @@ export default function GuestDetailsPage() {
                     </div>
 
                     <div className="card p-6 space-y-3">
-                        <h3 className="text-sm font-medium text-white/70">تواصل سريع</h3>
+                        <h3 className="text-sm font-medium text-white/70">
+                            {t(lang, 'تواصل سريع', 'Quick Contact')}
+                        </h3>
                         <a
                             href={`tel:${guest.phone}`}
                             className="btn-secondary w-full text-sm"
                         >
                             <Phone className="w-4 h-4" />
-                            اتصال بالنزيل
+                            {t(lang, 'اتصال بالنزيل', 'Call guest')}
                         </a>
                         {guest.email && (
                             <a
@@ -559,16 +569,18 @@ export default function GuestDetailsPage() {
                                 className="btn-secondary w-full text-sm"
                             >
                                 <Mail className="w-4 h-4" />
-                                إرسال بريد
+                                {t(lang, 'إرسال بريد', 'Send email')}
                             </a>
                         )}
                         <Link href="/dashboard/guests" className="btn-secondary w-full text-sm">
-                            العودة لقائمة النزلاء
+                            {t(lang, 'العودة لقائمة النزلاء', 'Back to guests')}
                         </Link>
                     </div>
 
                     <div className="card p-6 space-y-3">
-                        <h3 className="text-sm font-medium text-white/70">إدارة البيانات</h3>
+                        <h3 className="text-sm font-medium text-white/70">
+                            {t(lang, 'إدارة البيانات', 'Data Management')}
+                        </h3>
                         <button
                             type="button"
                             onClick={() => {
@@ -580,7 +592,7 @@ export default function GuestDetailsPage() {
                             className="btn-primary w-full text-sm"
                         >
                             <Save className="w-4 h-4" />
-                            تعديل بيانات النزيل
+                            {t(lang, 'تعديل بيانات النزيل', 'Edit guest')}
                         </button>
                     </div>
                 </div>

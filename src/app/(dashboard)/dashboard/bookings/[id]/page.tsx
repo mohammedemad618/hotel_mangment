@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 import {
     ArrowRight,
     CalendarCheck,
@@ -57,39 +59,40 @@ interface BookingDetail {
     specialRequests?: string;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-    pending: { label: 'قيد الانتظار', color: 'badge-warning', icon: Clock },
-    confirmed: { label: 'مؤكد', color: 'badge-primary', icon: CheckCircle },
-    checked_in: { label: 'مسجل الوصول', color: 'badge-success', icon: LogIn },
-    checked_out: { label: 'غادر', color: 'badge bg-white/10 text-white/60', icon: LogOut },
-    cancelled: { label: 'ملغي', color: 'badge-danger', icon: XCircle },
-    no_show: { label: 'لم يحضر', color: 'badge-danger', icon: AlertCircle },
+const statusConfig: Record<string, { label: { ar: string; en: string }; color: string; icon: any }> = {
+    pending: { label: { ar: 'قيد الانتظار', en: 'Pending' }, color: 'badge-warning', icon: Clock },
+    confirmed: { label: { ar: 'مؤكد', en: 'Confirmed' }, color: 'badge-primary', icon: CheckCircle },
+    checked_in: { label: { ar: 'مسجل الوصول', en: 'Checked in' }, color: 'badge-success', icon: LogIn },
+    checked_out: { label: { ar: 'غادر', en: 'Checked out' }, color: 'badge bg-white/10 text-white/60', icon: LogOut },
+    cancelled: { label: { ar: 'ملغي', en: 'Cancelled' }, color: 'badge-danger', icon: XCircle },
+    no_show: { label: { ar: 'لم يحضر', en: 'No show' }, color: 'badge-danger', icon: AlertCircle },
 };
 
-const paymentStatusLabels: Record<string, { label: string; color: string }> = {
-    pending: { label: 'غير مدفوع', color: 'text-warning-500' },
-    partial: { label: 'دفع جزئي', color: 'text-primary-300' },
-    paid: { label: 'مدفوع', color: 'text-success-500' },
-    refunded: { label: 'مسترد', color: 'text-white/60' },
+const paymentStatusLabels: Record<string, { label: { ar: string; en: string }; color: string }> = {
+    pending: { label: { ar: 'غير مدفوع', en: 'Unpaid' }, color: 'text-warning-500' },
+    partial: { label: { ar: 'دفع جزئي', en: 'Partial' }, color: 'text-primary-300' },
+    paid: { label: { ar: 'مدفوع', en: 'Paid' }, color: 'text-success-500' },
+    refunded: { label: { ar: 'مسترد', en: 'Refunded' }, color: 'text-white/60' },
 };
 
 const paymentMethods = [
-    { value: 'cash', label: 'نقدي' },
-    { value: 'card', label: 'بطاقة' },
-    { value: 'bank_transfer', label: 'تحويل بنكي' },
-    { value: 'online', label: 'دفع إلكتروني' },
+    { value: 'cash', label: { ar: 'نقدي', en: 'Cash' } },
+    { value: 'card', label: { ar: 'بطاقة', en: 'Card' } },
+    { value: 'bank_transfer', label: { ar: 'تحويل بنكي', en: 'Bank transfer' } },
+    { value: 'online', label: { ar: 'دفع إلكتروني', en: 'Online' } },
 ] as const;
 
-const bookingSourceLabels: Record<string, string> = {
-    direct: 'مباشر',
-    website: 'الموقع',
-    phone: 'هاتف',
-    walkin: 'حجز مباشر',
-    ota: 'وكالات',
+const bookingSourceLabels: Record<string, { ar: string; en: string }> = {
+    direct: { ar: 'مباشر', en: 'Direct' },
+    website: { ar: 'الموقع', en: 'Website' },
+    phone: { ar: 'هاتف', en: 'Phone' },
+    walkin: { ar: 'حجز مباشر', en: 'Walk-in' },
+    ota: { ar: 'وكالات', en: 'OTA' },
 };
 
 export default function BookingDetailsPage() {
     const { settings: hotelSettings, hotelProfile } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const { id } = useParams() as { id: string };
     const router = useRouter();
     const [booking, setBooking] = useState<BookingDetail | null>(null);
@@ -106,25 +109,6 @@ export default function BookingDetailsPage() {
     const [cancelReason, setCancelReason] = useState('');
     const [printDate, setPrintDate] = useState<string | null>(null);
 
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
-
     useEffect(() => {
         const fetchBooking = async () => {
             try {
@@ -132,7 +116,7 @@ export default function BookingDetailsPage() {
                 const data = await response.json();
 
                 if (!response.ok) {
-                    setError(data.error || 'تعذر جلب بيانات الحجز');
+                    setError(data.error || t(lang, 'تعذر جلب بيانات الحجز', 'Failed to load booking details'));
                     return;
                 }
 
@@ -140,7 +124,7 @@ export default function BookingDetailsPage() {
                 setNotesDraft(data.data.notes || '');
                 setRequestsDraft(data.data.specialRequests || '');
             } catch (err) {
-                setError('حدث خطأ في الاتصال بالخادم');
+                setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
             } finally {
                 setLoading(false);
             }
@@ -169,14 +153,14 @@ export default function BookingDetailsPage() {
 
             const result = await response.json();
             if (!response.ok) {
-                setActionError(result.error || 'تعذر تحديث الحجز');
+                setActionError(result.error || t(lang, 'تعذر تحديث الحجز', 'Failed to update booking'));
                 return;
             }
 
             setBooking(result.data);
             setActionSuccess(successMessage);
         } catch (err) {
-            setActionError('حدث خطأ في الاتصال بالخادم');
+            setActionError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         } finally {
             setUpdating(false);
         }
@@ -187,12 +171,12 @@ export default function BookingDetailsPage() {
     };
 
     const handleCancel = async () => {
-        const confirmed = window.confirm('هل تريد إلغاء هذا الحجز؟');
+        const confirmed = window.confirm(t(lang, 'هل تريد إلغاء هذا الحجز؟', 'Cancel this booking?'));
         if (!confirmed) return;
 
         await updateBooking(
             { status: 'cancelled', cancellationReason: cancelReason || undefined },
-            'تم إلغاء الحجز بنجاح'
+            t(lang, 'تم إلغاء الحجز بنجاح', 'Booking cancelled successfully')
         );
     };
 
@@ -204,11 +188,11 @@ export default function BookingDetailsPage() {
         const remaining = Math.max(total - paid, 0);
 
         if (!Number.isFinite(amount) || amount <= 0) {
-            setActionError('أدخل مبلغاً صحيحاً');
+            setActionError(t(lang, 'أدخل مبلغاً صحيحاً', 'Enter a valid amount'));
             return;
         }
         if (amount > remaining) {
-            setActionError('المبلغ أكبر من المتبقي');
+            setActionError(t(lang, 'المبلغ أكبر من المتبقي', 'Amount exceeds the remaining balance'));
             return;
         }
 
@@ -222,7 +206,7 @@ export default function BookingDetailsPage() {
                     },
                 },
             },
-            'تم تسجيل الدفعة بنجاح'
+            t(lang, 'تم تسجيل الدفعة بنجاح', 'Payment recorded successfully')
         );
 
         setPaymentAmount('');
@@ -236,13 +220,17 @@ export default function BookingDetailsPage() {
         const remaining = Math.max(total - paid, 0);
 
         if (remaining > 0) {
-            setActionError('لا يمكن تأكيد الدفع قبل تسوية المبلغ المتبقي');
+            setActionError(t(
+                lang,
+                'لا يمكن تأكيد الدفع قبل تسوية المبلغ المتبقي',
+                'Cannot confirm payment until the remaining balance is settled'
+            ));
             return;
         }
 
         await updateBooking(
             { payment: { status: 'paid', paidAmount: total } },
-            'تم تأكيد الدفع بنجاح'
+            t(lang, 'تم تأكيد الدفع بنجاح', 'Payment confirmed successfully')
         );
     };
 
@@ -254,7 +242,7 @@ export default function BookingDetailsPage() {
     const handleSaveNotes = async () => {
         await updateBooking(
             { notes: notesDraft, specialRequests: requestsDraft },
-            'تم تحديث الملاحظات بنجاح'
+            t(lang, 'تم تحديث الملاحظات بنجاح', 'Notes updated successfully')
         );
     };
 
@@ -309,9 +297,9 @@ export default function BookingDetailsPage() {
     if (error || !booking) {
         return (
             <div className="card p-8 text-center">
-                <p className="text-danger-600">{error || 'الحجز غير موجود'}</p>
+                <p className="text-danger-600">{error || t(lang, 'الحجز غير موجود', 'Booking not found')}</p>
                 <button onClick={() => router.back()} className="btn-secondary mt-4">
-                    العودة
+                    {t(lang, 'العودة', 'Back')}
                 </button>
             </div>
         );
@@ -326,14 +314,19 @@ export default function BookingDetailsPage() {
     const transactions = booking.payment?.transactions || [];
     const latestTransaction = transactions.length ? transactions[transactions.length - 1] : null;
     const paymentMethodValue = latestTransaction?.method || booking.payment?.method;
-    const paymentMethodLabel = paymentMethods.find((method) => method.value === paymentMethodValue)?.label || 'غير محدد';
+    const paymentMethodLabel = paymentMethods.find((method) => method.value === paymentMethodValue)?.label?.[lang]
+        || t(lang, 'غير محدد', 'Unknown');
     const guestsSummary = booking.numberOfGuests
-        ? `${booking.numberOfGuests.adults} بالغ • ${booking.numberOfGuests.children || 0} طفل`
-        : 'غير محدد';
+        ? t(
+            lang,
+            `${booking.numberOfGuests.adults} بالغ • ${booking.numberOfGuests.children || 0} طفل`,
+            `${booking.numberOfGuests.adults} adults • ${booking.numberOfGuests.children || 0} children`
+        )
+        : t(lang, 'غير محدد', 'Unknown');
     const formattedAddress = hotelProfile?.address
         ? [hotelProfile.address.street, hotelProfile.address.city, hotelProfile.address.country, hotelProfile.address.postalCode]
             .filter(Boolean)
-            .join('، ')
+            .join(lang === 'en' ? ', ' : '، ')
         : '';
 
     const canConfirm = booking.status === 'pending';
@@ -356,15 +349,15 @@ export default function BookingDetailsPage() {
                 </button>
                 <div className="flex-1">
                     <h1 className="text-2xl font-bold text-white">
-                        تفاصيل الحجز
+                        {t(lang, 'تفاصيل الحجز', 'Booking Details')}
                     </h1>
                     <p className="mt-1 text-white/60">
-                        رقم الحجز: {booking.bookingNumber}
+                        {t(lang, 'رقم الحجز', 'Booking #')}: {booking.bookingNumber}
                     </p>
                 </div>
                 <span className={status.color}>
                     <StatusIcon className="w-3 h-3 ml-1 inline" />
-                    {status.label}
+                    {status.label[lang]}
                 </span>
             </div>
 
@@ -393,20 +386,20 @@ export default function BookingDetailsPage() {
                                         {booking.bookingNumber}
                                     </h2>
                                     <p className="text-sm text-white/50">
-                                        من {formatDate(booking.checkInDate)} إلى {formatDate(booking.checkOutDate)}
+                                        {t(lang, 'من', 'From')} {formatDate(booking.checkInDate)} {t(lang, 'إلى', 'to')} {formatDate(booking.checkOutDate)}
                                     </p>
                                 </div>
                             </div>
                             <span className={status.color}>
                                 <StatusIcon className="w-3 h-3 ml-1 inline" />
-                                {status.label}
+                                {status.label[lang]}
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                             <div className="flex items-center gap-2">
                                 <BedDouble className="w-4 h-4 text-white/40" />
-                                <span className="text-white/50">الغرفة</span>
+                                <span className="text-white/50">{t(lang, 'الغرفة', 'Room')}</span>
                                 <Link
                                     href={`/dashboard/rooms/${booking.roomId?._id}`}
                                     className="font-medium text-primary-300 mr-auto"
@@ -416,7 +409,7 @@ export default function BookingDetailsPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <User className="w-4 h-4 text-white/40" />
-                                <span className="text-white/50">النزيل</span>
+                                <span className="text-white/50">{t(lang, 'النزيل', 'Guest')}</span>
                                 <Link
                                     href={`/dashboard/guests/${booking.guestId?._id}`}
                                     className="font-medium text-primary-300 mr-auto"
@@ -426,35 +419,35 @@ export default function BookingDetailsPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-white/40" />
-                                <span className="text-white/50">الإجمالي</span>
+                                <span className="text-white/50">{t(lang, 'الإجمالي', 'Total')}</span>
                                 <span className="font-medium text-success-500 mr-auto">
                                     {formatCurrency(total)}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-white/40" />
-                                <span className="text-white/50">الدفع</span>
+                                <span className="text-white/50">{t(lang, 'الدفع', 'Payment')}</span>
                                 <span className={`mr-auto font-medium ${paymentStatus.color}`}>
-                                    {paymentStatus.label}
+                                    {paymentStatus.label[lang]}
                                 </span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">عدد الليالي</p>
+                                <p className="text-white/50">{t(lang, 'عدد الليالي', 'Nights')}</p>
                                 <p className="font-semibold text-white">
-                                    {nights} ليلة
+                                    {t(lang, `${nights} ليلة`, `${nights} nights`)}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">المبلغ المدفوع</p>
+                                <p className="text-white/50">{t(lang, 'المبلغ المدفوع', 'Paid')}</p>
                                 <p className="font-semibold text-primary-300">
                                     {formatCurrency(paid)}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">المتبقي</p>
+                                <p className="text-white/50">{t(lang, 'المتبقي', 'Remaining')}</p>
                                 <p className="font-semibold text-warning-500">
                                     {formatCurrency(remaining)}
                                 </p>
@@ -465,23 +458,23 @@ export default function BookingDetailsPage() {
                     <div className="card p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <CreditCard className="w-5 h-5 text-primary-300" />
-                            إدارة المدفوعات
+                            {t(lang, 'إدارة المدفوعات', 'Payments')}
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">المجموع الفرعي</p>
+                                <p className="text-white/50">{t(lang, 'المجموع الفرعي', 'Subtotal')}</p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(booking.pricing?.subtotal || 0)}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">الضرائب</p>
+                                <p className="text-white/50">{t(lang, 'الضرائب', 'Taxes')}</p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(booking.pricing?.taxes || 0)}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">الإجمالي</p>
+                                <p className="text-white/50">{t(lang, 'الإجمالي', 'Total')}</p>
                                 <p className="font-semibold text-success-500">
                                     {formatCurrency(total)}
                                 </p>
@@ -490,7 +483,9 @@ export default function BookingDetailsPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-white/70 mb-2">مبلغ الدفعة</label>
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    {t(lang, 'مبلغ الدفعة', 'Payment amount')}
+                                </label>
                                 <input
                                     type="number"
                                     value={paymentAmount}
@@ -501,7 +496,9 @@ export default function BookingDetailsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white/70 mb-2">طريقة الدفع</label>
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    {t(lang, 'طريقة الدفع', 'Payment method')}
+                                </label>
                                 <select
                                     value={paymentMethod}
                                     onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
@@ -509,18 +506,20 @@ export default function BookingDetailsPage() {
                                     disabled={remaining === 0}
                                 >
                                     {paymentMethods.map((method) => (
-                                        <option key={method.value} value={method.value}>{method.label}</option>
+                                        <option key={method.value} value={method.value}>{method.label[lang]}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white/70 mb-2">مرجع الدفع</label>
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    {t(lang, 'مرجع الدفع', 'Payment reference')}
+                                </label>
                                 <input
                                     type="text"
                                     value={paymentReference}
                                     onChange={(e) => setPaymentReference(e.target.value)}
                                     className="input"
-                                    placeholder="اختياري"
+                                    placeholder={t(lang, 'اختياري', 'Optional')}
                                     disabled={remaining === 0}
                                 />
                             </div>
@@ -537,7 +536,7 @@ export default function BookingDetailsPage() {
                                 ) : (
                                     <>
                                         <Save className="w-5 h-5" />
-                                        تسجيل دفعة
+                                        {t(lang, 'تسجيل دفعة', 'Record payment')}
                                     </>
                                 )}
                             </button>
@@ -552,7 +551,7 @@ export default function BookingDetailsPage() {
                                 ) : (
                                     <>
                                         <CheckCircle className="w-5 h-5" />
-                                        تأكيد الدفع
+                                        {t(lang, 'تأكيد الدفع', 'Confirm payment')}
                                     </>
                                 )}
                             </button>
@@ -563,7 +562,7 @@ export default function BookingDetailsPage() {
                                 disabled={!canPrintReceipt}
                             >
                                 <Printer className="w-5 h-5" />
-                                طباعة وصل قبض
+                                {t(lang, 'طباعة وصل قبض', 'Print receipt')}
                             </button>
                         </div>
                     </div>
@@ -571,10 +570,10 @@ export default function BookingDetailsPage() {
                     <div className="card p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <FileText className="w-5 h-5 text-primary-300" />
-                            الملاحظات والطلبات
+                            {t(lang, 'الملاحظات والطلبات', 'Notes & Requests')}
                         </h3>
                         <div>
-                            <label className="block text-sm font-medium text-white/70 mb-2">الطلبات الخاصة</label>
+                            <label className="block text-sm font-medium text-white/70 mb-2">{t(lang, 'الطلبات الخاصة', 'Special requests')}</label>
                             <textarea
                                 value={requestsDraft}
                                 onChange={(e) => setRequestsDraft(e.target.value)}
@@ -582,7 +581,7 @@ export default function BookingDetailsPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-white/70 mb-2">ملاحظات داخلية</label>
+                            <label className="block text-sm font-medium text-white/70 mb-2">{t(lang, 'ملاحظات داخلية', 'Internal notes')}</label>
                             <textarea
                                 value={notesDraft}
                                 onChange={(e) => setNotesDraft(e.target.value)}
@@ -601,7 +600,7 @@ export default function BookingDetailsPage() {
                                 ) : (
                                     <>
                                         <Save className="w-5 h-5" />
-                                        حفظ الملاحظات
+                                        {t(lang, 'حفظ الملاحظات', 'Save notes')}
                                     </>
                                 )}
                             </button>
@@ -611,54 +610,54 @@ export default function BookingDetailsPage() {
 
                 <div className="space-y-4">
                     <div className="card p-5">
-                        <h3 className="text-sm font-medium text-white/70 mb-4">الإجراءات السريعة</h3>
+                        <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'الإجراءات السريعة', 'Quick actions')}</h3>
                         <div className="space-y-3">
                             <button
                                 type="button"
                                 className="btn-primary w-full"
-                                onClick={() => handleStatusChange('confirmed', 'تم تأكيد الحجز')}
+                                onClick={() => handleStatusChange('confirmed', t(lang, 'تم تأكيد الحجز', 'Booking confirmed'))}
                                 disabled={!canConfirm || updating}
                             >
                                 <CheckCircle className="w-4 h-4" />
-                                تأكيد الحجز
+                                {t(lang, 'تأكيد الحجز', 'Confirm booking')}
                             </button>
                             <button
                                 type="button"
                                 className="btn-secondary w-full"
-                                onClick={() => handleStatusChange('checked_in', 'تم تسجيل الوصول')}
+                                onClick={() => handleStatusChange('checked_in', t(lang, 'تم تسجيل الوصول', 'Checked in'))}
                                 disabled={!canCheckIn || updating}
                             >
                                 <LogIn className="w-4 h-4" />
-                                تسجيل الوصول
+                                {t(lang, 'تسجيل الوصول', 'Check-in')}
                             </button>
                             <button
                                 type="button"
                                 className="btn-secondary w-full"
-                                onClick={() => handleStatusChange('checked_out', 'تم تسجيل المغادرة')}
+                                onClick={() => handleStatusChange('checked_out', t(lang, 'تم تسجيل المغادرة', 'Checked out'))}
                                 disabled={!canCheckOut || updating}
                             >
                                 <LogOut className="w-4 h-4" />
-                                تسجيل المغادرة
+                                {t(lang, 'تسجيل المغادرة', 'Check-out')}
                             </button>
                             <button
                                 type="button"
                                 className="btn-secondary w-full"
-                                onClick={() => handleStatusChange('no_show', 'تم تسجيل حالة لم يحضر')}
+                                onClick={() => handleStatusChange('no_show', t(lang, 'تم تسجيل حالة لم يحضر', 'Marked as no-show'))}
                                 disabled={!canNoShow || updating}
                             >
                                 <AlertCircle className="w-4 h-4" />
-                                لم يحضر
+                                {t(lang, 'لم يحضر', 'No show')}
                             </button>
                         </div>
                     </div>
 
                     <div className="card p-5 space-y-3">
-                        <h3 className="text-sm font-medium text-white/70">إلغاء الحجز</h3>
+                        <h3 className="text-sm font-medium text-white/70">{t(lang, 'إلغاء الحجز', 'Cancel booking')}</h3>
                         <textarea
                             value={cancelReason}
                             onChange={(e) => setCancelReason(e.target.value)}
                             className="input min-h-[80px]"
-                            placeholder="سبب الإلغاء (اختياري)"
+                            placeholder={t(lang, 'سبب الإلغاء (اختياري)', 'Cancellation reason (optional)')}
                             disabled={!canCancel}
                         />
                         <button
@@ -668,28 +667,28 @@ export default function BookingDetailsPage() {
                             disabled={!canCancel || updating}
                         >
                             <Ban className="w-4 h-4" />
-                            إلغاء الحجز
+                            {t(lang, 'إلغاء الحجز', 'Cancel booking')}
                         </button>
                     </div>
 
                     <div className="card p-5">
-                        <h3 className="text-sm font-medium text-white/70 mb-4">البيانات الزمنية</h3>
+                        <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'البيانات الزمنية', 'Dates')}</h3>
                         <div className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 text-white/60">
                                 <Clock className="w-4 h-4" />
-                                <span>تاريخ الوصول:</span>
+                                <span>{t(lang, 'تاريخ الوصول', 'Check-in date')}:</span>
                                 <span className="font-medium text-white mr-auto">{formatDateTime(booking.checkInDate)}</span>
                             </div>
                             <div className="flex items-center gap-2 text-white/60">
                                 <Clock className="w-4 h-4" />
-                                <span>تاريخ المغادرة:</span>
+                                <span>{t(lang, 'تاريخ المغادرة', 'Check-out date')}:</span>
                                 <span className="font-medium text-white mr-auto">{formatDateTime(booking.checkOutDate)}</span>
                             </div>
                         </div>
                     </div>
 
                     <Link href="/dashboard/bookings" className="btn-secondary w-full">
-                        العودة لقائمة الحجوزات
+                        {t(lang, 'العودة لقائمة الحجوزات', 'Back to bookings')}
                     </Link>
                 </div>
             </div>
@@ -702,39 +701,39 @@ export default function BookingDetailsPage() {
                             {hotelProfile?.logo && (
                                 <img
                                     src={hotelProfile.logo}
-                                    alt="شعار الفندق"
+                                    alt={t(lang, 'شعار الفندق', 'Hotel logo')}
                                     className="receipt-logo"
                                 />
                             )}
                             <div>
-                                <h1 className="receipt-title">سند قبض</h1>
-                                <p className="receipt-subtitle">رقم الوصل: {booking.bookingNumber}</p>
+                                <h1 className="receipt-title">{t(lang, 'سند قبض', 'Receipt')}</h1>
+                                <p className="receipt-subtitle">{t(lang, 'رقم الوصل', 'Receipt #')}: {booking.bookingNumber}</p>
                                 <p className="receipt-muted">{hotelProfile?.name || 'HMS Console'}</p>
                                 {formattedAddress && <p className="receipt-muted">{formattedAddress}</p>}
                             </div>
                         </div>
                         <div className="receipt-meta">
                             <div className="receipt-meta-row">
-                                <span>تاريخ الإصدار</span>
+                                <span>{t(lang, 'تاريخ الإصدار', 'Issued on')}</span>
                                 <span>{formatDateTime(printDate || new Date().toISOString())}</span>
                             </div>
                             <div className="receipt-meta-row">
-                                <span>حالة الدفع</span>
-                                <span className="receipt-pill">{paymentStatus.label}</span>
+                                <span>{t(lang, 'حالة الدفع', 'Payment status')}</span>
+                                <span className="receipt-pill">{paymentStatus.label[lang]}</span>
                             </div>
                             <div className="receipt-meta-row">
-                                <span>طريقة الدفع</span>
+                                <span>{t(lang, 'طريقة الدفع', 'Payment method')}</span>
                                 <span>{paymentMethodLabel}</span>
                             </div>
                             {hotelProfile?.phone && (
                                 <div className="receipt-meta-row">
-                                    <span>هاتف</span>
+                                    <span>{t(lang, 'هاتف', 'Phone')}</span>
                                     <span>{hotelProfile.phone}</span>
                                 </div>
                             )}
                             {hotelProfile?.email && (
                                 <div className="receipt-meta-row">
-                                    <span>البريد</span>
+                                    <span>{t(lang, 'البريد', 'Email')}</span>
                                     <span>{hotelProfile.email}</span>
                                 </div>
                             )}
@@ -742,65 +741,65 @@ export default function BookingDetailsPage() {
                     </div>
 
                     <div className="receipt-section">
-                        <h2 className="receipt-section-title">تفاصيل الحجز</h2>
+                        <h2 className="receipt-section-title">{t(lang, 'تفاصيل الحجز', 'Booking details')}</h2>
                         <div className="receipt-info-grid">
                             <div>
-                                <p className="receipt-label">النزيل</p>
+                                <p className="receipt-label">{t(lang, 'النزيل', 'Guest')}</p>
                                 <p className="receipt-value">{booking.guestId?.firstName} {booking.guestId?.lastName}</p>
                                 <p className="receipt-muted">{booking.guestId?.phone}</p>
                             </div>
                             <div>
-                                <p className="receipt-label">الغرفة</p>
-                                <p className="receipt-value">غرفة {booking.roomId?.roomNumber}</p>
-                                <p className="receipt-muted">{booking.roomId?.type} - الطابق {booking.roomId?.floor}</p>
+                                <p className="receipt-label">{t(lang, 'الغرفة', 'Room')}</p>
+                                <p className="receipt-value">{t(lang, 'غرفة', 'Room')} {booking.roomId?.roomNumber}</p>
+                                <p className="receipt-muted">{booking.roomId?.type} - {t(lang, 'الطابق', 'Floor')} {booking.roomId?.floor}</p>
                             </div>
                             <div>
-                                <p className="receipt-label">فترة الإقامة</p>
+                                <p className="receipt-label">{t(lang, 'فترة الإقامة', 'Stay period')}</p>
                                 <p className="receipt-value">{formatDate(booking.checkInDate)} - {formatDate(booking.checkOutDate)}</p>
-                                <p className="receipt-muted">عدد الليالي: {nights}</p>
+                                <p className="receipt-muted">{t(lang, 'عدد الليالي', 'Nights')}: {nights}</p>
                             </div>
                             <div>
-                                <p className="receipt-label">عدد النزلاء</p>
+                                <p className="receipt-label">{t(lang, 'عدد النزلاء', 'Guests')}</p>
                                 <p className="receipt-value">{guestsSummary}</p>
                                 <p className="receipt-muted">
-                                    مصدر الحجز: {(booking.source ? bookingSourceLabels[booking.source] : undefined) || 'غير محدد'}
+                                    {t(lang, 'مصدر الحجز', 'Source')}: {(booking.source ? bookingSourceLabels[booking.source]?.[lang] : undefined) || t(lang, 'غير محدد', 'Unknown')}
                                 </p>
                             </div>
                         </div>
                     </div>
 
                     <div className="receipt-section">
-                        <h2 className="receipt-section-title">تفاصيل المبالغ</h2>
+                        <h2 className="receipt-section-title">{t(lang, 'تفاصيل المبالغ', 'Charges')}</h2>
                         <table className="receipt-table">
                             <thead>
                                 <tr>
-                                    <th>الوصف</th>
-                                    <th>التفاصيل</th>
-                                    <th>المبلغ</th>
+                                    <th>{t(lang, 'الوصف', 'Description')}</th>
+                                    <th>{t(lang, 'التفاصيل', 'Details')}</th>
+                                    <th>{t(lang, 'المبلغ', 'Amount')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>الإقامة</td>
+                                    <td>{t(lang, 'الإقامة', 'Stay')}</td>
                                     <td>
-                                        {formatCurrency(booking.pricing?.roomRate || 0)} × {booking.pricing?.numberOfNights || nights} ليلة
+                                        {formatCurrency(booking.pricing?.roomRate || 0)} × {booking.pricing?.numberOfNights || nights} {t(lang, 'ليلة', 'nights')}
                                     </td>
                                     <td>{formatCurrency(booking.pricing?.subtotal || 0)}</td>
                                 </tr>
                                 {booking.pricing?.discount ? (
                                     <tr>
-                                        <td>خصم</td>
+                                        <td>{t(lang, 'خصم', 'Discount')}</td>
                                         <td>—</td>
                                         <td>- {formatCurrency(booking.pricing.discount)}</td>
                                     </tr>
                                 ) : null}
                                 <tr>
-                                    <td>الضريبة</td>
+                                    <td>{t(lang, 'الضريبة', 'Tax')}</td>
                                     <td>{hotelSettings?.taxRate ?? 15}%</td>
                                     <td>{formatCurrency(booking.pricing?.taxes || 0)}</td>
                                 </tr>
                                 <tr className="receipt-total-row">
-                                    <td>الإجمالي</td>
+                                    <td>{t(lang, 'الإجمالي', 'Total')}</td>
                                     <td />
                                     <td>{formatCurrency(total)}</td>
                                 </tr>
@@ -809,22 +808,22 @@ export default function BookingDetailsPage() {
                     </div>
 
                     <div className="receipt-section">
-                        <h2 className="receipt-section-title">سجل الدفعات</h2>
+                        <h2 className="receipt-section-title">{t(lang, 'سجل الدفعات', 'Payment history')}</h2>
                         {transactions.length ? (
                             <table className="receipt-table">
                                 <thead>
                                     <tr>
-                                        <th>التاريخ</th>
-                                        <th>الطريقة</th>
-                                        <th>المرجع</th>
-                                        <th>المبلغ</th>
+                                        <th>{t(lang, 'التاريخ', 'Date')}</th>
+                                        <th>{t(lang, 'الطريقة', 'Method')}</th>
+                                        <th>{t(lang, 'المرجع', 'Reference')}</th>
+                                        <th>{t(lang, 'المبلغ', 'Amount')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {transactions.map((tx, index) => (
                                         <tr key={`${tx.date}-${index}`}>
                                             <td>{formatDateTime(tx.date)}</td>
-                                            <td>{paymentMethods.find((method) => method.value === tx.method)?.label || tx.method}</td>
+                                            <td>{paymentMethods.find((method) => method.value === tx.method)?.label?.[lang] || tx.method}</td>
                                             <td>{tx.reference || '—'}</td>
                                             <td>{formatCurrency(tx.amount)}</td>
                                         </tr>
@@ -832,43 +831,43 @@ export default function BookingDetailsPage() {
                                 </tbody>
                             </table>
                         ) : (
-                            <p className="receipt-muted">لا توجد دفعات مسجلة حتى الآن.</p>
+                            <p className="receipt-muted">{t(lang, 'لا توجد دفعات مسجلة حتى الآن.', 'No payments recorded yet.')}</p>
                         )}
                     </div>
 
                     <div className="receipt-totals">
                         <div>
-                            <p className="receipt-label">الإجمالي</p>
+                            <p className="receipt-label">{t(lang, 'الإجمالي', 'Total')}</p>
                             <p className="receipt-value">{formatCurrency(total)}</p>
                         </div>
                         <div>
-                            <p className="receipt-label">المدفوع</p>
+                            <p className="receipt-label">{t(lang, 'المدفوع', 'Paid')}</p>
                             <p className="receipt-value">{formatCurrency(paid)}</p>
                         </div>
                         <div>
-                            <p className="receipt-label">المتبقي</p>
+                            <p className="receipt-label">{t(lang, 'المتبقي', 'Remaining')}</p>
                             <p className="receipt-value">{formatCurrency(remaining)}</p>
                         </div>
                     </div>
 
                     <div className="receipt-footer">
                         <div>
-                            <p className="receipt-label">آخر دفعة</p>
+                            <p className="receipt-label">{t(lang, 'آخر دفعة', 'Latest payment')}</p>
                             <p className="receipt-value">{latestTransaction ? formatDateTime(latestTransaction.date) : '—'}</p>
                         </div>
                         <div>
-                            <p className="receipt-label">مرجع الدفعة</p>
+                            <p className="receipt-label">{t(lang, 'مرجع الدفعة', 'Payment reference')}</p>
                             <p className="receipt-value">{latestTransaction?.reference || '—'}</p>
                         </div>
                     </div>
 
                     <div className="receipt-signatures">
                         <div>
-                            <p>توقيع المستلم</p>
+                            <p>{t(lang, 'توقيع المستلم', 'Recipient signature')}</p>
                             <span />
                         </div>
                         <div>
-                            <p>توقيع الموظف</p>
+                            <p>{t(lang, 'توقيع الموظف', 'Staff signature')}</p>
                             <span />
                         </div>
                     </div>

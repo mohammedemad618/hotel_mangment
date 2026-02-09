@@ -14,12 +14,12 @@ import {
     BedDouble,
     DollarSign,
     Users,
-    User,
-    Phone,
     Search,
     Check,
 } from 'lucide-react';
 import { createBookingSchema, CreateBookingInput } from '@/lib/validations';
+import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
+import { normalizeLanguage, t } from '@/lib/i18n';
 
 interface RoomOption {
     _id: string;
@@ -36,17 +36,18 @@ interface GuestOption {
     phone: string;
 }
 
-const roomTypeLabels: Record<string, string> = {
-    single: 'مفردة',
-    double: 'مزدوجة',
-    twin: 'توأم',
-    suite: 'جناح',
-    deluxe: 'فاخرة',
-    presidential: 'رئاسية',
+const roomTypeLabels: Record<string, { ar: string; en: string }> = {
+    single: { ar: 'مفردة', en: 'Single' },
+    double: { ar: 'مزدوجة', en: 'Double' },
+    twin: { ar: 'توأم', en: 'Twin' },
+    suite: { ar: 'جناح', en: 'Suite' },
+    deluxe: { ar: 'فاخرة', en: 'Deluxe' },
+    presidential: { ar: 'رئاسية', en: 'Presidential' },
 };
 
 export default function NewBookingPage() {
     const { settings: hotelSettings, setNotifications } = useHotelSettings();
+    const lang = normalizeLanguage(hotelSettings?.language);
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [rooms, setRooms] = useState<RoomOption[]>([]);
@@ -56,25 +57,6 @@ export default function NewBookingPage() {
     const [guestQuery, setGuestQuery] = useState('');
     const [roomOpen, setRoomOpen] = useState(false);
     const [guestOpen, setGuestOpen] = useState(false);
-
-    const refreshSession = async () => {
-        const response = await fetch('/api/auth/refresh', { method: 'POST' });
-        return response.ok;
-    };
-
-    const fetchWithRefresh = async (input: RequestInfo, init?: RequestInit) => {
-        const response = await fetch(input, init);
-        if (response.status !== 401) {
-            return response;
-        }
-
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-            return response;
-        }
-
-        return fetch(input, init);
-    };
 
     const {
         register,
@@ -108,7 +90,7 @@ export default function NewBookingPage() {
                     setGuests(guestsData.data);
                 }
             } catch (err) {
-                setError('تعذر تحميل بيانات الغرف أو النزلاء');
+                setError(t(lang, 'تعذر تحميل بيانات الغرف أو النزلاء', 'Failed to load rooms or guests'));
             } finally {
                 setLoadingOptions(false);
             }
@@ -137,6 +119,8 @@ export default function NewBookingPage() {
         }).format(amount);
     };
 
+    const taxRate = typeof hotelSettings?.taxRate === 'number' ? hotelSettings.taxRate : 15;
+
     const pricingSummary = useMemo(() => {
         if (!selectedRoom || !checkInDateValue || !checkOutDateValue) {
             return { nights: 0, subtotal: 0, taxes: 0, total: 0, valid: false };
@@ -149,12 +133,11 @@ export default function NewBookingPage() {
         }
 
         const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-        const taxRate = typeof hotelSettings?.taxRate === 'number' ? hotelSettings.taxRate : 15;
         const subtotal = selectedRoom.pricePerNight * nights;
         const taxes = subtotal * (taxRate / 100);
         const total = subtotal + taxes;
         return { nights, subtotal, taxes, total, valid: true };
-    }, [selectedRoom, checkInDateValue, checkOutDateValue, hotelSettings?.taxRate]);
+    }, [selectedRoom, checkInDateValue, checkOutDateValue, taxRate]);
 
     const filteredRooms = rooms.filter((room) =>
         room.roomNumber.toLowerCase().includes(roomQuery.trim().toLowerCase())
@@ -171,8 +154,9 @@ export default function NewBookingPage() {
     });
 
     const handleSelectRoom = (room: RoomOption) => {
+        const typeLabel = roomTypeLabels[room.type]?.[lang] || room.type;
         setValue('roomId', room._id, { shouldValidate: true });
-        setRoomQuery(`${room.roomNumber} - ${roomTypeLabels[room.type] || room.type}`);
+        setRoomQuery(`${room.roomNumber} - ${typeLabel}`);
         setRoomOpen(false);
     };
 
@@ -195,14 +179,20 @@ export default function NewBookingPage() {
             const result = await response.json();
 
             if (!response.ok) {
-                setError(result.error || 'حدث خطأ أثناء إنشاء الحجز');
+                setError(result.error || t(lang, 'حدث خطأ أثناء إنشاء الحجز', 'Failed to create the booking'));
                 return;
             }
 
             if (hotelSettings?.notifications?.newBooking) {
                 const guestName = guests.find((guest) => guest._id === data.guestId);
                 const roomInfo = rooms.find((room) => room._id === data.roomId);
-                const message = `تم إنشاء حجز جديد للغرفة ${roomInfo?.roomNumber || ''} باسم ${guestName ? `${guestName.firstName} ${guestName.lastName}` : ''}.`;
+                const roomNumber = roomInfo?.roomNumber || '';
+                const fullName = guestName ? `${guestName.firstName} ${guestName.lastName}`.trim() : '';
+                const message = t(
+                    lang,
+                    `تم إنشاء حجز جديد للغرفة ${roomNumber} باسم ${fullName}.`,
+                    `New booking created for room ${roomNumber} under ${fullName}.`
+                );
                 setNotifications((prev) => [
                     {
                         type: 'booking_new' as const,
@@ -215,7 +205,7 @@ export default function NewBookingPage() {
 
             router.push('/dashboard/bookings');
         } catch (err) {
-            setError('حدث خطأ في الاتصال بالخادم');
+            setError(t(lang, 'حدث خطأ في الاتصال بالخادم', 'Network error while contacting the server'));
         }
     };
 
@@ -230,10 +220,10 @@ export default function NewBookingPage() {
                 </button>
                 <div>
                     <h1 className="text-2xl font-bold text-white">
-                        إنشاء حجز جديد
+                        {t(lang, 'إنشاء حجز جديد', 'Create New Booking')}
                     </h1>
                     <p className="mt-1 text-white/60">
-                        اختر الغرفة والنزيل وحدد فترة الإقامة
+                        {t(lang, 'اختر الغرفة والنزيل وحدد فترة الإقامة', 'Select a room and guest, then set the stay dates')}
                     </p>
                 </div>
             </div>
@@ -248,13 +238,13 @@ export default function NewBookingPage() {
                 <div className="card p-6 space-y-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <CalendarCheck className="w-5 h-5 text-primary-300" />
-                        تفاصيل الحجز
+                        {t(lang, 'تفاصيل الحجز', 'Booking Details')}
                     </h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                الغرفة *
+                                {t(lang, 'الغرفة *', 'Room *')}
                             </label>
                             <input type="hidden" {...register('roomId')} />
                             <div
@@ -274,14 +264,14 @@ export default function NewBookingPage() {
                                     }}
                                     onFocus={() => setRoomOpen(true)}
                                     className="input pr-9 text-sm"
-                                    placeholder="ابحث برقم الغرفة..."
+                                    placeholder={t(lang, 'ابحث برقم الغرفة...', 'Search by room number...')}
                                     disabled={loadingOptions}
                                 />
                                 {roomOpen && (
                                     <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-[rgba(12,8,24,0.96)] shadow-xl max-h-56 overflow-auto">
                                         {filteredRooms.length === 0 ? (
                                             <div className="px-4 py-3 text-xs text-white/50">
-                                                لا توجد غرف مطابقة للبحث.
+                                                {t(lang, 'لا توجد غرف مطابقة للبحث.', 'No matching rooms found.')}
                                             </div>
                                         ) : (
                                             filteredRooms.slice(0, 8).map((room) => (
@@ -292,7 +282,7 @@ export default function NewBookingPage() {
                                                     className="w-full text-right px-4 py-3 text-sm text-white/80 hover:bg-white/5 flex items-center justify-between"
                                                 >
                                                     <span>
-                                                        {room.roomNumber} - {roomTypeLabels[room.type] || room.type}
+                                                        {room.roomNumber} - {roomTypeLabels[room.type]?.[lang] || room.type}
                                                     </span>
                                                     {selectedRoomId === room._id && (
                                                         <Check className="w-4 h-4 text-primary-300" />
@@ -310,7 +300,7 @@ export default function NewBookingPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                النزيل *
+                                {t(lang, 'النزيل *', 'Guest *')}
                             </label>
                             <input type="hidden" {...register('guestId')} />
                             <div
@@ -330,14 +320,14 @@ export default function NewBookingPage() {
                                     }}
                                     onFocus={() => setGuestOpen(true)}
                                     className="input pr-9 text-sm"
-                                    placeholder="ابحث باسم النزيل أو الهاتف..."
+                                    placeholder={t(lang, 'ابحث باسم النزيل أو الهاتف...', 'Search by guest name or phone...')}
                                     disabled={loadingOptions}
                                 />
                                 {guestOpen && (
                                     <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-[rgba(12,8,24,0.96)] shadow-xl max-h-56 overflow-auto">
                                         {filteredGuests.length === 0 ? (
                                             <div className="px-4 py-3 text-xs text-white/50">
-                                                لا يوجد نزلاء مطابقون للبحث.
+                                                {t(lang, 'لا يوجد نزلاء مطابقون للبحث.', 'No matching guests found.')}
                                             </div>
                                         ) : (
                                             filteredGuests.slice(0, 8).map((guest) => (
@@ -364,14 +354,14 @@ export default function NewBookingPage() {
                             )}
                             <div className="mt-2">
                                 <Link href="/dashboard/guests/new" className="text-xs text-primary-300 hover:text-primary-200">
-                                    إضافة نزيل جديد
+                                    {t(lang, 'إضافة نزيل جديد', 'Add new guest')}
                                 </Link>
                             </div>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                تاريخ الوصول *
+                                {t(lang, 'تاريخ الوصول *', 'Check-in date *')}
                             </label>
                             <input
                                 type="date"
@@ -380,7 +370,7 @@ export default function NewBookingPage() {
                             />
                             {hotelSettings?.checkInTime && (
                                 <p className="mt-1 text-xs text-white/40">
-                                    وقت تسجيل الوصول: {hotelSettings.checkInTime}
+                                    {t(lang, 'وقت تسجيل الوصول:', 'Check-in time:')} {hotelSettings.checkInTime}
                                 </p>
                             )}
                             {errors.checkInDate && (
@@ -390,7 +380,7 @@ export default function NewBookingPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                تاريخ المغادرة *
+                                {t(lang, 'تاريخ المغادرة *', 'Check-out date *')}
                             </label>
                             <input
                                 type="date"
@@ -399,7 +389,7 @@ export default function NewBookingPage() {
                             />
                             {hotelSettings?.checkOutTime && (
                                 <p className="mt-1 text-xs text-white/40">
-                                    وقت تسجيل المغادرة: {hotelSettings.checkOutTime}
+                                    {t(lang, 'وقت تسجيل المغادرة:', 'Check-out time:')} {hotelSettings.checkOutTime}
                                 </p>
                             )}
                             {errors.checkOutDate && (
@@ -410,7 +400,7 @@ export default function NewBookingPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                    البالغين *
+                                    {t(lang, 'البالغين *', 'Adults *')}
                                 </label>
                                 <div className="relative">
                                     <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -429,7 +419,7 @@ export default function NewBookingPage() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-white/70 mb-2">
-                                    الأطفال
+                                    {t(lang, 'الأطفال', 'Children')}
                                 </label>
                                 <input
                                     type="number"
@@ -442,14 +432,14 @@ export default function NewBookingPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                مصدر الحجز
+                                {t(lang, 'مصدر الحجز', 'Booking source')}
                             </label>
                             <select {...register('source')} className="input">
-                                <option value="direct">مباشر</option>
-                                <option value="website">الموقع الإلكتروني</option>
-                                <option value="phone">الهاتف</option>
-                                <option value="walkin">زيارة مباشرة</option>
-                                <option value="ota">وكالات الحجز</option>
+                                <option value="direct">{t(lang, 'مباشر', 'Direct')}</option>
+                                <option value="website">{t(lang, 'الموقع الإلكتروني', 'Website')}</option>
+                                <option value="phone">{t(lang, 'الهاتف', 'Phone')}</option>
+                                <option value="walkin">{t(lang, 'زيارة مباشرة', 'Walk-in')}</option>
+                                <option value="ota">{t(lang, 'وكالات الحجز', 'OTA')}</option>
                             </select>
                         </div>
                     </div>
@@ -458,34 +448,40 @@ export default function NewBookingPage() {
                 <div className="card p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-primary-300" />
-                        ملخص التسعير
+                        {t(lang, 'ملخص التسعير', 'Pricing Summary')}
                     </h2>
                     {!selectedRoom ? (
                         <p className="text-sm text-white/60">
-                            اختر غرفة لعرض ملخص التسعير.
+                            {t(lang, 'اختر غرفة لعرض ملخص التسعير.', 'Select a room to see pricing summary.')}
                         </p>
                     ) : pricingSummary.valid ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">سعر الليلة</p>
+                                <p className="text-white/50">{t(lang, 'سعر الليلة', 'Nightly rate')}</p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(selectedRoom.pricePerNight)}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">عدد الليالي</p>
+                                <p className="text-white/50">{t(lang, 'عدد الليالي', 'Nights')}</p>
                                 <p className="font-semibold text-white">
-                                    {pricingSummary.nights} ليلة
+                                    {t(
+                                        lang,
+                                        `${pricingSummary.nights} ليلة`,
+                                        `${pricingSummary.nights} night${pricingSummary.nights === 1 ? '' : 's'}`
+                                    )}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">الضريبة ({typeof hotelSettings?.taxRate === 'number' ? hotelSettings.taxRate : 15}%)</p>
+                                <p className="text-white/50">
+                                    {t(lang, `الضريبة (${taxRate}%)`, `Tax (${taxRate}%)`)}
+                                </p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(pricingSummary.taxes)}
                                 </p>
                             </div>
                             <div className="card p-4 bg-white/5">
-                                <p className="text-white/50">الإجمالي المتوقع</p>
+                                <p className="text-white/50">{t(lang, 'الإجمالي المتوقع', 'Estimated total')}</p>
                                 <p className="font-semibold text-success-500">
                                     {formatCurrency(pricingSummary.total)}
                                 </p>
@@ -493,7 +489,7 @@ export default function NewBookingPage() {
                         </div>
                     ) : (
                         <p className="text-sm text-warning-500">
-                            يرجى التأكد من تواريخ الوصول والمغادرة لاحتساب السعر.
+                            {t(lang, 'يرجى التأكد من تواريخ الوصول والمغادرة لاحتساب السعر.', 'Please verify check-in and check-out dates to calculate pricing.')}
                         </p>
                     )}
                 </div>
@@ -501,28 +497,28 @@ export default function NewBookingPage() {
                 <div className="card p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <BedDouble className="w-5 h-5 text-primary-300" />
-                        ملاحظات وطلبات خاصة
+                        {t(lang, 'ملاحظات وطلبات خاصة', 'Notes & Requests')}
                     </h2>
 
                     <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                            الطلبات الخاصة
+                            {t(lang, 'الطلبات الخاصة', 'Special requests')}
                         </label>
                         <textarea
                             {...register('specialRequests')}
                             className="input min-h-[90px]"
-                            placeholder="مثال: سرير إضافي، إطلالة بحرية..."
+                            placeholder={t(lang, 'مثال: سرير إضافي، إطلالة بحرية...', 'Example: extra bed, sea view...')}
                         />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                            ملاحظات داخلية
+                            {t(lang, 'ملاحظات داخلية', 'Internal notes')}
                         </label>
                         <textarea
                             {...register('notes')}
                             className="input min-h-[90px]"
-                            placeholder="ملاحظات للإدارة أو الاستقبال..."
+                            placeholder={t(lang, 'ملاحظات للإدارة أو الاستقبال...', 'Notes for management/front desk...')}
                         />
                     </div>
                 </div>
@@ -533,7 +529,7 @@ export default function NewBookingPage() {
                         onClick={() => router.back()}
                         className="btn-secondary"
                     >
-                        إلغاء
+                        {t(lang, 'إلغاء', 'Cancel')}
                     </button>
                     <button
                         type="submit"
@@ -545,7 +541,7 @@ export default function NewBookingPage() {
                         ) : (
                             <>
                                 <Save className="w-5 h-5" />
-                                <span>حفظ الحجز</span>
+                                <span>{t(lang, 'حفظ الحجز', 'Save Booking')}</span>
                             </>
                         )}
                     </button>
