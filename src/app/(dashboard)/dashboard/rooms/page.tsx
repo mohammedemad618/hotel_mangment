@@ -215,7 +215,7 @@ export default function RoomsPage() {
 
             {/* Filters */}
             <div className="filter-shell">
-                <div className="flex flex-col xl:flex-row gap-4">
+                <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                         <input
@@ -230,7 +230,7 @@ export default function RoomsPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[130px]"
                         >
                             <option value="">{t(lang, 'كل الحالات', 'All statuses')}</option>
                             <option value="available">{statusConfig.available.label[lang]}</option>
@@ -243,7 +243,7 @@ export default function RoomsPage() {
                         <select
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[130px]"
                         >
                             <option value="">{t(lang, 'كل الأنواع', 'All types')}</option>
                             {Object.entries(typeLabels).map(([value, label]) => (
@@ -253,7 +253,7 @@ export default function RoomsPage() {
                         <select
                             value={floorFilter}
                             onChange={(e) => setFloorFilter(e.target.value)}
-                            className="input min-w-[120px]"
+                            className="input-compact min-w-[110px]"
                         >
                             <option value="">{t(lang, 'كل الطوابق', 'All floors')}</option>
                             {floors.map((floor) => (
@@ -265,7 +265,7 @@ export default function RoomsPage() {
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                            className="input min-w-[140px]"
+                            className="input-compact min-w-[125px]"
                         >
                             <option value="roomNumber">{t(lang, 'ترتيب حسب رقم الغرفة', 'Sort by room #')}</option>
                             <option value="price">{t(lang, 'ترتيب حسب السعر', 'Sort by price')}</option>
@@ -275,7 +275,7 @@ export default function RoomsPage() {
                         <button
                             type="button"
                             onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                            className="btn-secondary text-sm"
+                            className="btn-secondary text-sm px-3 py-2"
                         >
                             <ArrowUpDown className="w-4 h-4" />
                             {sortDir === 'asc'

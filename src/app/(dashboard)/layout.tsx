@@ -17,6 +17,7 @@ import {
     User,
     Search,
     Wallet,
+    BarChart3,
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
@@ -106,6 +107,7 @@ const navigation = [
     { name: { ar: 'الحجوزات', en: 'Bookings' }, href: '/dashboard/bookings', icon: CalendarCheck },
     { name: { ar: 'النزلاء', en: 'Guests' }, href: '/dashboard/guests', icon: Users },
     { name: { ar: 'المالية', en: 'Finance' }, href: '/dashboard/finance', icon: Wallet },
+    { name: { ar: 'التقارير', en: 'Reports' }, href: '/dashboard/reports', icon: BarChart3 },
     { name: { ar: 'الإعدادات', en: 'Settings' }, href: '/dashboard/settings', icon: Settings },
 ];
 

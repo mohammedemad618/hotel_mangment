@@ -200,7 +200,7 @@ export default function GuestsPage() {
 
             {/* Filters */}
             <div className="filter-shell">
-                <div className="flex flex-col xl:flex-row gap-4">
+                <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                         <input
@@ -215,7 +215,7 @@ export default function GuestsPage() {
                         <select
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
-                            className="input min-w-[160px]"
+                            className="input-compact min-w-[135px]"
                         >
                             <option value="">{t(lang, 'جميع الأنواع', 'All types')}</option>
                             <option value="individual">{guestTypeConfig.individual.label[lang]}</option>
@@ -225,7 +225,7 @@ export default function GuestsPage() {
                         <button
                             type="button"
                             onClick={() => setShowBlacklisted((prev) => !prev)}
-                            className={`btn-secondary text-sm ${showBlacklisted ? 'bg-danger-500/20 text-danger-500 border-danger-500/30' : ''}`}
+                            className={`btn-secondary text-sm px-3 py-2 ${showBlacklisted ? 'bg-danger-500/20 text-danger-500 border-danger-500/30' : ''}`}
                         >
                             <ShieldAlert className="w-4 h-4" />
                             {t(lang, 'القائمة السوداء', 'Blacklist')}
@@ -233,7 +233,7 @@ export default function GuestsPage() {
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                            className="input min-w-[160px]"
+                            className="input-compact min-w-[135px]"
                         >
                             <option value="name">{t(lang, 'الاسم', 'Name')}</option>
                             <option value="spent">{t(lang, 'الإنفاق', 'Spend')}</option>
@@ -243,7 +243,7 @@ export default function GuestsPage() {
                         <button
                             type="button"
                             onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                            className="btn-secondary text-sm"
+                            className="btn-secondary text-sm px-3 py-2"
                         >
                             <ArrowUpDown className="w-4 h-4" />
                             {sortDir === 'asc'
@@ -283,7 +283,7 @@ export default function GuestsPage() {
                                 setSortBy('name');
                                 setSortDir('asc');
                             }}
-                            className="btn-secondary text-sm"
+                            className="btn-secondary text-sm px-3 py-2"
                         >
                             {t(lang, 'إعادة تعيين', 'Reset')}
                         </button>

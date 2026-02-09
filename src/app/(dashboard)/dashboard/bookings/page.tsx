@@ -221,7 +221,7 @@ export default function BookingsPage() {
             </div>
 
             <div className="filter-shell">
-                <div className="flex flex-col xl:flex-row gap-4">
+                <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                         <input
@@ -236,7 +236,7 @@ export default function BookingsPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[130px]"
                         >
                             <option value="">{t(lang, 'كل الحالات', 'All statuses')}</option>
                             <option value="pending">{statusConfig.pending.label[lang]}</option>
@@ -249,7 +249,7 @@ export default function BookingsPage() {
                         <select
                             value={paymentFilter}
                             onChange={(e) => setPaymentFilter(e.target.value)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[130px]"
                         >
                             <option value="">{t(lang, 'كل المدفوعات', 'All payments')}</option>
                             <option value="pending">{paymentStatusLabels.pending.label[lang]}</option>
@@ -261,18 +261,18 @@ export default function BookingsPage() {
                             type="date"
                             value={dateFrom}
                             onChange={(e) => setDateFrom(e.target.value)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[125px]"
                         />
                         <input
                             type="date"
                             value={dateTo}
                             onChange={(e) => setDateTo(e.target.value)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[125px]"
                         />
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                            className="input min-w-[150px]"
+                            className="input-compact min-w-[130px]"
                         >
                             {sortOptions.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label[lang]}</option>
@@ -281,7 +281,7 @@ export default function BookingsPage() {
                         <button
                             type="button"
                             onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                            className="btn-secondary text-sm"
+                            className="btn-secondary text-sm px-3 py-2"
                         >
                             <ArrowUpDown className="w-4 h-4" />
                             {sortDir === 'asc'
