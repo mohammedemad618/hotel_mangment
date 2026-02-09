@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
-import { User, Hotel } from '@/core/db/models';
+import { User, Hotel, AuditLog } from '@/core/db/models';
 import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import { createUserSchema } from '@/lib/validations';
 import { hashPassword, validatePasswordStrength } from '@/core/auth';
 import { escapeRegex, normalizeSearchTerm } from '@/core/security/input';
 import mongoose from 'mongoose';
+import { writeAuditLog } from '@/core/audit/logger';
 
 const MAX_LIMIT = 100;
 const SUB_SUPER_ALLOWED_ROLES = new Set(['admin', 'manager', 'receptionist', 'housekeeping', 'accountant']);
@@ -34,6 +35,7 @@ async function listUsers(
         const search = normalizeSearchTerm(searchParams.get('search'));
         const role = searchParams.get('role');
         const hotelId = searchParams.get('hotelId');
+        const includeStats = searchParams.get('includeStats') === 'true';
 
         const filter: Record<string, unknown> = {};
 
@@ -83,7 +85,7 @@ async function listUsers(
 
         const [users, total] = await Promise.all([
             User.find(filter)
-                .select('name email phone role hotelId isActive createdAt createdBy')
+                .select('name email phone role hotelId isActive createdAt createdBy verification')
                 .populate('hotel', 'name slug')
                 .populate('createdBy', 'name email role')
                 .sort({ createdAt: -1 })
@@ -93,9 +95,54 @@ async function listUsers(
             User.countDocuments(filter),
         ]);
 
+        let data: any[] = users;
+        if (includeStats && isMainSuperAdmin(auth)) {
+            const subSuperAdmins = users.filter((item) => item.role === 'sub_super_admin');
+            const subIds = subSuperAdmins.map((item) => item._id);
+
+            if (subIds.length > 0) {
+                const [hotelsByCreator, usersByCreator, actionsByActor] = await Promise.all([
+                    Hotel.aggregate([
+                        { $match: { createdBy: { $in: subIds } } },
+                        { $group: { _id: '$createdBy', count: { $sum: 1 } } },
+                    ]),
+                    User.aggregate([
+                        {
+                            $match: {
+                                createdBy: { $in: subIds },
+                                role: { $ne: 'sub_super_admin' },
+                            },
+                        },
+                        { $group: { _id: '$createdBy', count: { $sum: 1 } } },
+                    ]),
+                    AuditLog.aggregate([
+                        { $match: { actorId: { $in: subIds } } },
+                        { $group: { _id: '$actorId', count: { $sum: 1 } } },
+                    ]),
+                ]);
+
+                const hotelsMap = new Map(hotelsByCreator.map((item) => [String(item._id), item.count as number]));
+                const usersMap = new Map(usersByCreator.map((item) => [String(item._id), item.count as number]));
+                const actionsMap = new Map(actionsByActor.map((item) => [String(item._id), item.count as number]));
+
+                data = users.map((item) => {
+                    if (item.role !== 'sub_super_admin') return item;
+                    const key = String(item._id);
+                    return {
+                        ...item,
+                        stats: {
+                            hotelsCreated: hotelsMap.get(key) || 0,
+                            accountsCreated: usersMap.get(key) || 0,
+                            operationsCount: actionsMap.get(key) || 0,
+                        },
+                    };
+                });
+            }
+        }
+
         return NextResponse.json({
             success: true,
-            data: users,
+            data,
             pagination: { page, limit, total, pages: Math.ceil(total / limit) },
         });
     } catch (error) {
@@ -157,6 +204,19 @@ async function createUser(
         }
 
         const passwordHash = await hashPassword(password);
+        const initialVerification =
+            role === 'sub_super_admin'
+                ? {
+                    isVerified: false,
+                    verifiedBy: null,
+                    verifiedAt: null,
+                }
+                : {
+                    isVerified: true,
+                    verifiedBy: new mongoose.Types.ObjectId(auth.userId),
+                    verifiedAt: new Date(),
+                };
+
         const user = await User.create({
             name,
             email,
@@ -164,8 +224,23 @@ async function createUser(
             role,
             hotelId: resolvedHotelId,
             createdBy: new mongoose.Types.ObjectId(auth.userId),
+            verification: initialVerification,
             permissions: [],
             isActive: true,
+        });
+
+        await writeAuditLog({
+            request,
+            auth,
+            action: 'user.create',
+            entityType: 'user',
+            entityId: user._id,
+            targetUserId: user._id,
+            targetHotelId: resolvedHotelId,
+            metadata: {
+                createdRole: role,
+                createdEmail: user.email,
+            },
         });
 
         return NextResponse.json({
@@ -179,6 +254,7 @@ async function createUser(
                 hotelId: user.hotelId,
                 isActive: user.isActive,
                 createdBy: user.createdBy,
+                verification: user.verification,
             },
         }, { status: 201 });
     } catch (error) {

@@ -18,6 +18,11 @@ export type UserRole =
 export interface IUser extends Document {
     hotelId: Types.ObjectId | null; // null for platform-level admins (super/sub-super)
     createdBy?: Types.ObjectId | null;
+    verification: {
+        isVerified: boolean;
+        verifiedBy?: Types.ObjectId | null;
+        verifiedAt?: Date | null;
+    };
     hotel?: IHotel | null;
     email: string;
     passwordHash: string;
@@ -48,6 +53,11 @@ const UserSchema = new Schema<IUser>(
             ref: 'User',
             default: null,
             index: true,
+        },
+        verification: {
+            isVerified: { type: Boolean, default: false, index: true },
+            verifiedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+            verifiedAt: { type: Date, default: null },
         },
         email: {
             type: String,

@@ -33,13 +33,13 @@ interface EditUserForm {
 }
 
 const roleLabels: Record<string, string> = {
-    super_admin: 'Main Super Admin',
-    sub_super_admin: 'Sub Super Admin',
-    admin: 'Hotel Owner',
-    manager: 'Manager',
-    receptionist: 'Receptionist',
-    housekeeping: 'Housekeeping',
-    accountant: 'Accountant',
+    super_admin: 'سوبر أدمن رئيسي',
+    sub_super_admin: 'صب سوبر أدمن',
+    admin: 'مدير الفندق',
+    manager: 'مدير تشغيلي',
+    receptionist: 'موظف استقبال',
+    housekeeping: 'إشراف نظافة',
+    accountant: 'محاسب',
 };
 
 const allCreationRoles = ['sub_super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'];
@@ -90,12 +90,12 @@ export default function SuperAdminUsersPage() {
             const response = await fetchWithRefresh('/api/super-admin/hotels?limit=200');
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'Failed to load hotels');
+                setError(data.error || 'تعذر تحميل الفنادق');
                 return;
             }
             setHotels(Array.isArray(data.data) ? data.data : []);
         } catch {
-            setError('Failed to load hotels');
+            setError('تعذر تحميل الفنادق');
         }
     };
 
@@ -109,12 +109,12 @@ export default function SuperAdminUsersPage() {
             const response = await fetchWithRefresh(`/api/super-admin/users?${query}`);
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'Failed to load users');
+                setError(data.error || 'تعذر تحميل المستخدمين');
                 return;
             }
             setUsers(Array.isArray(data.data) ? data.data : []);
         } catch {
-            setError('Failed to load users');
+            setError('تعذر تحميل المستخدمين');
         } finally {
             setLoading(false);
         }
@@ -150,15 +150,15 @@ export default function SuperAdminUsersPage() {
 
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'Failed to create user');
+                setError(result.error || 'فشل إنشاء المستخدم');
                 return;
             }
 
-            setSuccess('User created successfully');
+            setSuccess('تم إنشاء المستخدم بنجاح');
             await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
             reset({ role: 'admin' });
         } catch {
-            setError('Server connection failed');
+            setError('فشل الاتصال بالخادم');
         } finally {
             setSubmitting(false);
         }
@@ -175,13 +175,13 @@ export default function SuperAdminUsersPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'Failed to update status');
+                setError(result.error || 'فشل تحديث حالة الحساب');
                 return;
             }
             setUsers((prev) => prev.map((item) => (item._id === user._id ? { ...item, isActive: result.data.isActive } : item)));
-            setSuccess('Status updated');
+            setSuccess('تم تحديث الحالة');
         } catch {
-            setError('Server connection failed');
+            setError('فشل الاتصال بالخادم');
         }
     };
 
@@ -213,14 +213,14 @@ export default function SuperAdminUsersPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'Failed to update user');
+                setError(result.error || 'فشل تحديث المستخدم');
                 return;
             }
-            setSuccess('User updated');
+            setSuccess('تم تحديث المستخدم');
             setEditForm(null);
             await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
         } catch {
-            setError('Server connection failed');
+            setError('فشل الاتصال بالخادم');
         } finally {
             setSavingEdit(false);
         }
@@ -238,8 +238,8 @@ export default function SuperAdminUsersPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">Users & Roles</h1>
-                <p className="mt-1 text-white/60">Manage platform and hotel accounts with scoped ownership controls.</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">إدارة المستخدمين والصلاحيات</h1>
+                <p className="mt-1 text-white/60">إدارة حسابات المنصة والفنادق وفق نطاق الصلاحيات المعتمد.</p>
             </div>
 
             {(error || success) && (
@@ -252,13 +252,13 @@ export default function SuperAdminUsersPage() {
             <div className="card p-5 space-y-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     <UserCog className="w-5 h-5 text-primary-300" />
-                    Create User
+                    إنشاء مستخدم
                 </h2>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input {...register('name')} className="input-compact w-full" placeholder="Name" />
-                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="Email" dir="ltr" />
-                    <input {...register('password')} type="password" className="input-compact w-full" placeholder="Password" dir="ltr" />
+                    <input {...register('name')} className="input-compact w-full" placeholder="الاسم" />
+                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="البريد الإلكتروني" dir="ltr" />
+                    <input {...register('password')} type="password" className="input-compact w-full" placeholder="كلمة المرور" dir="ltr" />
                     <select {...register('role')} className="input-compact w-full">
                         {createRoles.map((value) => (
                             <option key={value} value={value}>{roleLabels[value] || value}</option>
@@ -267,7 +267,7 @@ export default function SuperAdminUsersPage() {
                     <div className="md:col-span-2 relative">
                         <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                         <select {...register('hotelId')} className="input-compact w-full pr-9" disabled={selectedRoleIsPlatform}>
-                            <option value="">Select hotel</option>
+                            <option value="">اختر الفندق</option>
                             {hotelOptions.map((hotel) => (
                                 <option key={hotel.value} value={hotel.value}>{hotel.label}</option>
                             ))}
@@ -275,13 +275,13 @@ export default function SuperAdminUsersPage() {
                     </div>
                     <div className="md:col-span-2 flex justify-end">
                         <button type="submit" className="btn-primary text-sm" disabled={submitting}>
-                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Create user</>}
+                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />إنشاء المستخدم</>}
                         </button>
                     </div>
                 </form>
 
                 {(errors.name || errors.email || errors.password || errors.role || errors.hotelId) && (
-                    <p className="text-xs text-danger-500">Please review validation errors before submit.</p>
+                    <p className="text-xs text-danger-500">يرجى مراجعة الحقول قبل الإرسال.</p>
                 )}
             </div>
 
@@ -297,7 +297,7 @@ export default function SuperAdminUsersPage() {
                                 handleFilterChange(e.target.value, roleFilter, hotelFilter);
                             }}
                             className="input-compact w-full pr-9"
-                            placeholder="Search by name or email"
+                            placeholder="بحث بالاسم أو البريد الإلكتروني"
                         />
                     </div>
                     <select
@@ -308,7 +308,7 @@ export default function SuperAdminUsersPage() {
                         }}
                         className="input-compact min-w-[180px]"
                     >
-                        <option value="">All roles</option>
+                        <option value="">كل الأدوار</option>
                         {Object.entries(roleLabels).map(([value, label]) => (
                             <option key={value} value={value}>{label}</option>
                         ))}
@@ -321,7 +321,7 @@ export default function SuperAdminUsersPage() {
                         }}
                         className="input-compact min-w-[180px]"
                     >
-                        <option value="">All hotels</option>
+                        <option value="">كل الفنادق</option>
                         {hotelOptions.map((hotel) => (
                             <option key={hotel.value} value={hotel.value}>{hotel.label}</option>
                         ))}
@@ -331,19 +331,19 @@ export default function SuperAdminUsersPage() {
                 {loading ? (
                     <div className="flex justify-center py-8"><div className="spinner w-10 h-10" /></div>
                 ) : users.length === 0 ? (
-                    <p className="text-white/60 text-center py-8">No users available</p>
+                    <p className="text-white/60 text-center py-8">لا يوجد مستخدمون حالياً.</p>
                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Hotel</th>
-                                    <th>Created By</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                                    <th>الاسم</th>
+                                    <th>البريد</th>
+                                    <th>الدور</th>
+                                    <th>الفندق</th>
+                                    <th>تم الإنشاء بواسطة</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -356,15 +356,15 @@ export default function SuperAdminUsersPage() {
                                         <td className="text-white/60">{user.createdBy?.name || '-'}</td>
                                         <td>
                                             {user.isActive ? (
-                                                <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />Active</span>
+                                                <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />نشط</span>
                                             ) : (
-                                                <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />Inactive</span>
+                                                <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />غير نشط</span>
                                             )}
                                         </td>
                                         <td>
                                             <div className="flex flex-wrap gap-1">
-                                                <button onClick={() => toggleUserStatus(user)} className="btn-secondary text-xs">{user.isActive ? 'Disable' : 'Enable'}</button>
-                                                <button onClick={() => openEditUser(user)} className="btn-secondary text-xs"><Pencil className="w-3.5 h-3.5" />Edit</button>
+                                                <button onClick={() => toggleUserStatus(user)} className="btn-secondary text-xs">{user.isActive ? 'تعطيل' : 'تفعيل'}</button>
+                                                <button onClick={() => openEditUser(user)} className="btn-secondary text-xs"><Pencil className="w-3.5 h-3.5" />تعديل</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -377,16 +377,16 @@ export default function SuperAdminUsersPage() {
 
             {editForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">Edit User Account</h3>
+                    <h3 className="text-base font-semibold text-white">تعديل حساب المستخدم</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input value={editForm.name} onChange={(e) => setEditForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="Name" />
-                        <input value={editForm.email} onChange={(e) => setEditForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="Email" dir="ltr" />
-                        <input value={editForm.phone} onChange={(e) => setEditForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="Phone" dir="ltr" />
-                        <label className="surface-tile flex items-center justify-between text-sm">Account active<input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} /></label>
+                        <input value={editForm.name} onChange={(e) => setEditForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="الاسم" />
+                        <input value={editForm.email} onChange={(e) => setEditForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="البريد الإلكتروني" dir="ltr" />
+                        <input value={editForm.phone} onChange={(e) => setEditForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="رقم الهاتف" dir="ltr" />
+                        <label className="surface-tile flex items-center justify-between text-sm">تفعيل الحساب<input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} /></label>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button className="btn-secondary text-sm" onClick={() => setEditForm(null)}>Close</button>
-                        <button className="btn-primary text-sm" onClick={saveUserEdit} disabled={savingEdit}>{savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save changes'}</button>
+                        <button className="btn-secondary text-sm" onClick={() => setEditForm(null)}>إغلاق</button>
+                        <button className="btn-primary text-sm" onClick={saveUserEdit} disabled={savingEdit}>{savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ التعديلات'}</button>
                     </div>
                 </div>
             )}

@@ -75,6 +75,13 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        if (user.role === 'sub_super_admin' && !user.verification?.isVerified) {
+            return NextResponse.json(
+                { error: 'Account is pending main super admin verification' },
+                { status: 403 }
+            );
+        }
+
         // Get permissions for role
         const rolePermissions = getPermissionsForRole(user.role as UserRole);
         const permissions = Array.from(

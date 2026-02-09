@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
 import { User, Hotel } from '@/core/db/models';
-import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
+import { withSuperAdmin, withMainSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import mongoose from 'mongoose';
+import { writeAuditLog } from '@/core/audit/logger';
 
 function hasOwn(obj: Record<string, unknown>, key: string): boolean {
     return Object.prototype.hasOwnProperty.call(obj, key);
@@ -14,6 +15,14 @@ function isMainSuperAdmin(auth: AuthContext): boolean {
 
 function isValidEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function toAuditValue(value: unknown): unknown {
+    if (value === undefined) return null;
+    if (value === null) return null;
+    if (value instanceof Date) return value.toISOString();
+    if (value instanceof mongoose.Types.ObjectId) return value.toString();
+    return value;
 }
 
 async function updateUser(
@@ -30,7 +39,9 @@ async function updateUser(
         }
 
         const body = await request.json() as Record<string, unknown>;
-        const target = await User.findById(id).select('_id role hotelId isActive').lean();
+        const target = await User.findById(id)
+            .select('_id role hotelId isActive name email phone verification')
+            .lean();
 
         if (!target) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -67,6 +78,26 @@ async function updateUser(
                 return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
             }
             updates.isActive = body.isActive;
+        }
+
+        if (hasOwn(body, 'isVerified')) {
+            if (!isMainSuperAdmin(auth)) {
+                return NextResponse.json({ error: 'Only main super admin can verify accounts' }, { status: 403 });
+            }
+
+            if (target.role !== 'sub_super_admin') {
+                return NextResponse.json({ error: 'Verification is available only for sub super admin accounts' }, { status: 400 });
+            }
+
+            if (typeof body.isVerified !== 'boolean') {
+                return NextResponse.json({ error: 'Invalid verification value' }, { status: 400 });
+            }
+
+            updates['verification.isVerified'] = body.isVerified;
+            updates['verification.verifiedAt'] = body.isVerified ? new Date() : null;
+            updates['verification.verifiedBy'] = body.isVerified
+                ? new mongoose.Types.ObjectId(auth.userId)
+                : null;
         }
 
         if (hasOwn(body, 'name')) {
@@ -121,7 +152,7 @@ async function updateUser(
         if (Object.keys(unset).length > 0) updateDoc.$unset = unset;
 
         const user = await User.findByIdAndUpdate(id, updateDoc, { new: true })
-            .select('name email phone role hotelId isActive createdAt createdBy')
+            .select('name email phone role hotelId isActive createdAt createdBy verification')
             .populate('hotel', 'name slug')
             .populate('createdBy', 'name email role')
             .lean();
@@ -129,6 +160,54 @@ async function updateUser(
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
+
+        const trackedFields = new Set<string>([
+            ...Object.keys(updates),
+            ...Object.keys(unset),
+        ]);
+
+        const beforeMap: Record<string, unknown> = {
+            isActive: target.isActive,
+            name: (target as any).name,
+            email: (target as any).email,
+            phone: (target as any).phone ?? null,
+            'verification.isVerified': (target as any).verification?.isVerified ?? null,
+            'verification.verifiedAt': (target as any).verification?.verifiedAt ?? null,
+            'verification.verifiedBy': (target as any).verification?.verifiedBy ?? null,
+        };
+
+        const afterMap: Record<string, unknown> = {
+            isActive: user.isActive,
+            name: user.name,
+            email: user.email,
+            phone: (user as any).phone ?? null,
+            'verification.isVerified': (user as any).verification?.isVerified ?? null,
+            'verification.verifiedAt': (user as any).verification?.verifiedAt ?? null,
+            'verification.verifiedBy': (user as any).verification?.verifiedBy ?? null,
+        };
+
+        const changes: Record<string, { before: unknown; after: unknown }> = {};
+        trackedFields.forEach((field) => {
+            changes[field] = {
+                before: toAuditValue(beforeMap[field]),
+                after: toAuditValue(afterMap[field]),
+            };
+        });
+
+        await writeAuditLog({
+            request,
+            auth,
+            action: 'user.update',
+            entityType: 'user',
+            entityId: id,
+            targetUserId: id,
+            targetHotelId: user.hotelId,
+            metadata: {
+                updatedFields: Object.keys(updates),
+                unsetFields: Object.keys(unset),
+                changes,
+            },
+        });
 
         return NextResponse.json({ success: true, data: user });
     } catch (error) {
@@ -138,3 +217,54 @@ async function updateUser(
 }
 
 export const PATCH = withSuperAdmin(updateUser);
+
+async function deleteUser(
+    request: NextRequest,
+    context: { params: Promise<Record<string, string>> },
+    auth: AuthContext
+) {
+    try {
+        await connectDB();
+
+        const { id } = await context.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+        }
+
+        if (id === auth.userId) {
+            return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
+        }
+
+        const target = await User.findById(id).select('_id role hotelId email').lean();
+        if (!target) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        if (target.role === 'super_admin') {
+            return NextResponse.json({ error: 'Main super admin account cannot be deleted' }, { status: 400 });
+        }
+
+        await User.findByIdAndDelete(id);
+
+        await writeAuditLog({
+            request,
+            auth,
+            action: 'user.delete',
+            entityType: 'user',
+            entityId: id,
+            targetUserId: id,
+            targetHotelId: target.hotelId,
+            metadata: {
+                deletedRole: target.role,
+                deletedEmail: target.email,
+            },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Delete user error:', error);
+        return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+    }
+}
+
+export const DELETE = withMainSuperAdmin(deleteUser);

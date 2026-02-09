@@ -88,13 +88,21 @@ export function withAuth(handler: AuthenticatedHandler) {
         await connectDB();
 
         const user = await User.findById(payload.sub)
-            .select('isActive role hotelId permissions')
+            .select('isActive role hotelId permissions verification')
             .lean();
 
         if (!user || !user.isActive) {
             return NextResponse.json(
                 { error: 'User is inactive or not found' },
                 { status: 401 }
+            );
+        }
+
+        const isSubSuperVerified = user.role !== 'sub_super_admin' || Boolean((user as any).verification?.isVerified);
+        if (!isSubSuperVerified) {
+            return NextResponse.json(
+                { error: 'Sub super admin account is pending verification' },
+                { status: 403 }
             );
         }
 

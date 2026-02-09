@@ -13,6 +13,7 @@ import {
     Users,
     Search,
     ShieldCheck,
+    Activity,
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 
@@ -24,14 +25,15 @@ interface UserData {
 }
 
 const navigation = [
-    { name: 'Hotels & Subscriptions', href: '/super-admin', icon: LayoutDashboard },
-    { name: 'Users & Access', href: '/super-admin/users', icon: Users },
+    { name: 'الفنادق والاشتراكات', href: '/super-admin', icon: LayoutDashboard },
+    { name: 'المستخدمون والصلاحيات', href: '/super-admin/users', icon: Users },
+    { name: 'مراقبة الصب سوبر أدمن', href: '/super-admin/sub-super-admins', icon: Activity },
 ];
 
 function getRoleLabel(role?: string): string {
-    if (role === 'super_admin') return 'Main Super Admin';
-    if (role === 'sub_super_admin') return 'Sub Super Admin';
-    return 'Platform Manager';
+    if (role === 'super_admin') return 'سوبر أدمن رئيسي';
+    if (role === 'sub_super_admin') return 'صب سوبر أدمن';
+    return 'مدير المنصة';
 }
 
 export default function SuperAdminLayout({
@@ -74,8 +76,17 @@ export default function SuperAdminLayout({
 
     const activeItemTitle = useMemo(() => {
         const match = navigation.find((item) => pathname === item.href || pathname.startsWith(item.href + '/'));
-        return match?.name || 'Platform Dashboard';
+        return match?.name || 'لوحة إدارة المنصة';
     }, [pathname]);
+
+    const visibleNavigation = useMemo(() => {
+        return navigation.filter((item) => {
+            if (item.href === '/super-admin/sub-super-admins') {
+                return user?.role === 'super_admin';
+            }
+            return true;
+        });
+    }, [user?.role]);
 
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
@@ -108,7 +119,7 @@ export default function SuperAdminLayout({
                             <div className="p-2 bg-primary-500/20 border border-primary-500/40 rounded-lg shadow-glass">
                                 <Building2 className="w-6 h-6 text-primary-300" />
                             </div>
-                            <span className="font-semibold text-white">Platform Admin</span>
+                            <span className="font-semibold text-white">إدارة المنصة</span>
                         </Link>
                         <button
                             onClick={() => setSidebarOpen(false)}
@@ -119,7 +130,7 @@ export default function SuperAdminLayout({
                     </div>
 
                     <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                        {navigation.map((item) => {
+                        {visibleNavigation.map((item) => {
                             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                             return (
                                 <Link
@@ -141,7 +152,7 @@ export default function SuperAdminLayout({
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                             <div className="flex items-center gap-2 text-xs text-white/50 mb-2">
                                 <ShieldCheck className="w-4 h-4" />
-                                Account level
+                                مستوى الحساب
                             </div>
                             <p className="text-sm text-white font-medium">{getRoleLabel(user?.role)}</p>
                         </div>
@@ -161,7 +172,7 @@ export default function SuperAdminLayout({
                             className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-danger-500 hover:bg-danger-500/10 transition-colors"
                         >
                             <LogOut className="w-5 h-5" />
-                            <span className="font-medium">Logout</span>
+                            <span className="font-medium">تسجيل الخروج</span>
                         </button>
                     </div>
                 </div>
@@ -180,14 +191,14 @@ export default function SuperAdminLayout({
                             <Search className="w-4 h-4 text-white/40" />
                             <input
                                 className="bg-transparent text-sm text-white/80 placeholder-white/40 focus:outline-none w-full"
-                                placeholder="Search hotels or accounts..."
+                                placeholder="بحث في الفنادق أو الحسابات..."
                                 readOnly
                                 value=""
                             />
                         </div>
                         <div className="flex-1 md:flex-none" />
                         <div className="text-end hidden sm:block">
-                            <p className="text-xs text-white/50">Central platform control</p>
+                            <p className="text-xs text-white/50">تحكم مركزي كامل بالمنصة</p>
                             <p className="text-sm font-medium text-white/90">{activeItemTitle}</p>
                         </div>
                     </div>

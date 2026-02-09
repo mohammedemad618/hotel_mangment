@@ -44,6 +44,7 @@ async function handler(
                 email: user.email,
                 role: user.role,
                 hotelId: user.hotelId,
+                verification: (user as any).verification || { isVerified: false },
                 permissions: auth.permissions,
                 hotel: hotelData,
             },

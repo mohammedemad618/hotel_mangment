@@ -3,6 +3,7 @@ import connectDB from '@/core/db/connection';
 import { Hotel, User } from '@/core/db/models';
 import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import mongoose from 'mongoose';
+import { writeAuditLog } from '@/core/audit/logger';
 
 const PLAN_VALUES = new Set(['free', 'basic', 'premium', 'enterprise']);
 const STATUS_VALUES = new Set(['active', 'suspended', 'cancelled']);
@@ -19,6 +20,20 @@ function parseDateInput(value: unknown): Date | null {
     return parsed;
 }
 
+function getPathValue(source: Record<string, unknown>, path: string): unknown {
+    return path.split('.').reduce<unknown>((acc, segment) => {
+        if (!acc || typeof acc !== 'object') return undefined;
+        return (acc as Record<string, unknown>)[segment];
+    }, source);
+}
+
+function toAuditValue(value: unknown): unknown {
+    if (value === undefined || value === null) return null;
+    if (value instanceof Date) return value.toISOString();
+    if (value instanceof mongoose.Types.ObjectId) return value.toString();
+    return value;
+}
+
 async function updateHotel(
     request: NextRequest,
     context: { params: Promise<Record<string, string>> },
@@ -32,7 +47,9 @@ async function updateHotel(
             return NextResponse.json({ error: 'Invalid hotel id' }, { status: 400 });
         }
 
-        const targetHotel = await Hotel.findById(id).select('_id createdBy').lean();
+        const targetHotel = await Hotel.findById(id)
+            .select('_id createdBy isActive subscription verification')
+            .lean();
         if (!targetHotel) {
             return NextResponse.json({ error: 'Hotel not found' }, { status: 404 });
         }
@@ -108,6 +125,28 @@ async function updateHotel(
             .select('name email phone isActive hotelId createdAt')
             .sort({ createdAt: 1 })
             .lean();
+
+        const changes: Record<string, { before: unknown; after: unknown }> = {};
+        Object.keys(updates).forEach((field) => {
+            changes[field] = {
+                before: toAuditValue(getPathValue(targetHotel as unknown as Record<string, unknown>, field)),
+                after: toAuditValue(getPathValue(hotel as unknown as Record<string, unknown>, field)),
+            };
+        });
+
+        await writeAuditLog({
+            request,
+            auth,
+            action: 'hotel.update',
+            entityType: hasOwn(body, 'isVerified') ? 'verification' : 'hotel',
+            entityId: id,
+            targetHotelId: id,
+            targetUserId: admin?._id || null,
+            metadata: {
+                updatedFields: Object.keys(updates),
+                changes,
+            },
+        });
 
         return NextResponse.json({ success: true, data: { ...hotel, admin: admin || null } });
     } catch (error) {

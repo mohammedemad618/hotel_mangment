@@ -6,6 +6,7 @@ import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import { registerHotelSchema } from '@/lib/validations';
 import { hashPassword, validatePasswordStrength } from '@/core/auth';
 import { escapeRegex, normalizeSearchTerm } from '@/core/security/input';
+import { writeAuditLog } from '@/core/audit/logger';
 
 const MAX_LIMIT = 100;
 
@@ -168,8 +169,28 @@ async function createHotel(
                 passwordHash,
                 name: adminName,
                 role: 'admin',
+                verification: {
+                    isVerified: true,
+                    verifiedBy: new mongoose.Types.ObjectId(auth.userId),
+                    verifiedAt: new Date(),
+                },
                 permissions: [],
                 isActive: true,
+            });
+
+            await writeAuditLog({
+                request,
+                auth,
+                action: 'hotel.create',
+                entityType: 'hotel',
+                entityId: hotel._id,
+                targetUserId: user._id,
+                targetHotelId: hotel._id,
+                metadata: {
+                    hotelName: hotel.name,
+                    ownerEmail: user.email,
+                    creatorRole: auth.role,
+                },
             });
 
             return NextResponse.json({

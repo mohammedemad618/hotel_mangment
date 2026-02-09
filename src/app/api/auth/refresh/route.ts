@@ -55,6 +55,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'User not found or inactive' }, { status: 401 });
         }
 
+        if (user.role === 'sub_super_admin' && !user.verification?.isVerified) {
+            await clearAuthCookies();
+            return NextResponse.json(
+                { error: 'Account is pending main super admin verification' },
+                { status: 403 }
+            );
+        }
+
         if (!user.refreshTokenHash || !isTokenHashMatch(refreshToken, user.refreshTokenHash)) {
             await clearAuthCookies();
             return NextResponse.json({ error: 'Refresh token revoked' }, { status: 401 });
