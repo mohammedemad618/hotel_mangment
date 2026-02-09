@@ -42,6 +42,7 @@ async function updateUser(
         const target = await User.findById(id)
             .select('_id role hotelId isActive name email phone verification')
             .lean();
+        let adminNote: string | null = null;
 
         if (!target) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -143,6 +144,20 @@ async function updateUser(
             }
         }
 
+        if (hasOwn(body, 'adminNote')) {
+            if (body.adminNote === null || body.adminNote === '') {
+                adminNote = null;
+            } else if (typeof body.adminNote === 'string') {
+                const normalized = body.adminNote.trim();
+                if (normalized.length > 500) {
+                    return NextResponse.json({ error: 'Admin note is too long' }, { status: 400 });
+                }
+                adminNote = normalized || null;
+            } else {
+                return NextResponse.json({ error: 'Invalid admin note' }, { status: 400 });
+            }
+        }
+
         if (Object.keys(updates).length === 0 && Object.keys(unset).length === 0) {
             return NextResponse.json({ error: 'No valid update fields provided' }, { status: 400 });
         }
@@ -206,6 +221,7 @@ async function updateUser(
                 updatedFields: Object.keys(updates),
                 unsetFields: Object.keys(unset),
                 changes,
+                adminNote,
             },
         });
 
