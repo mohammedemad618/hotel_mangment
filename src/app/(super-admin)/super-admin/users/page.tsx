@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -12,7 +12,6 @@ import {
     Plus,
     RefreshCcw,
     Search,
-    Sparkles,
     Trash2,
     UserCog,
     Users,
@@ -53,78 +52,20 @@ interface DeleteUserForm {
     role: string;
 }
 
-interface DefaultAccountTemplate {
-    key: string;
-    name: string;
-    email: string;
-    password: string;
-    role: CreateUserInput['role'];
-    requiresHotel: boolean;
-}
 
 const roleLabels: Record<string, string> = {
-    super_admin: 'سوبر أدمن رئيسي',
-    sub_super_admin: 'صب سوبر أدمن',
-    admin: 'مدير الفندق',
-    manager: 'مدير تشغيلي',
-    receptionist: 'موظف استقبال',
-    housekeeping: 'إشراف نظافة',
-    accountant: 'محاسب',
+    super_admin: 'Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø±Ø¦ÙŠØ³ÙŠ',
+    sub_super_admin: 'ØµØ¨ Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù†',
+    admin: 'Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚',
+    manager: 'Ù…Ø¯ÙŠØ± ØªØ´ØºÙŠÙ„ÙŠ',
+    receptionist: 'Ù…ÙˆØ¸Ù Ø§Ø³ØªÙ‚Ø¨Ø§Ù„',
+    housekeeping: 'Ø¥Ø´Ø±Ø§Ù Ù†Ø¸Ø§ÙØ©',
+    accountant: 'Ù…Ø­Ø§Ø³Ø¨',
 };
 
 const allCreationRoles = ['sub_super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'];
 const subCreationRoles = ['admin', 'manager', 'receptionist', 'housekeeping', 'accountant'];
 
-const DEFAULT_ACCOUNT_TEMPLATES: DefaultAccountTemplate[] = [
-    {
-        key: 'sub-super-admin',
-        name: 'مشرف منصة افتراضي',
-        email: 'subsuper.demo@hotel.local',
-        password: 'Demo@12345',
-        role: 'sub_super_admin',
-        requiresHotel: false,
-    },
-    {
-        key: 'hotel-admin',
-        name: 'مدير فندق افتراضي',
-        email: 'admin.demo@hotel.local',
-        password: 'Demo@12345',
-        role: 'admin',
-        requiresHotel: true,
-    },
-    {
-        key: 'hotel-manager',
-        name: 'مدير تشغيلي افتراضي',
-        email: 'manager.demo@hotel.local',
-        password: 'Demo@12345',
-        role: 'manager',
-        requiresHotel: true,
-    },
-    {
-        key: 'hotel-receptionist',
-        name: 'موظف استقبال افتراضي',
-        email: 'reception.demo@hotel.local',
-        password: 'Demo@12345',
-        role: 'receptionist',
-        requiresHotel: true,
-    },
-    {
-        key: 'hotel-housekeeping',
-        name: 'مشرف نظافة افتراضي',
-        email: 'housekeeping.demo@hotel.local',
-        password: 'Demo@12345',
-        role: 'housekeeping',
-        requiresHotel: true,
-    },
-    {
-        key: 'hotel-accountant',
-        name: 'محاسب افتراضي',
-        email: 'accountant.demo@hotel.local',
-        password: 'Demo@12345',
-        role: 'accountant',
-        requiresHotel: true,
-    },
-];
 
 export default function SuperAdminUsersPage() {
     const [currentRole, setCurrentRole] = useState<'super_admin' | 'sub_super_admin' | null>(null);
@@ -136,7 +77,6 @@ export default function SuperAdminUsersPage() {
     const [submitting, setSubmitting] = useState(false);
     const [savingEdit, setSavingEdit] = useState(false);
     const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
-    const [seedingDefaults, setSeedingDefaults] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -183,12 +123,12 @@ export default function SuperAdminUsersPage() {
             const response = await fetchWithRefresh('/api/super-admin/hotels?limit=200');
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'تعذر تحميل الفنادق');
+                setError(data.error || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚');
                 return;
             }
             setHotels(Array.isArray(data.data) ? data.data : []);
         } catch {
-            setError('تعذر تحميل الفنادق');
+            setError('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚');
         }
     };
 
@@ -202,12 +142,12 @@ export default function SuperAdminUsersPage() {
             const response = await fetchWithRefresh(`/api/super-admin/users?${query}`);
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'تعذر تحميل المستخدمين');
+                setError(data.error || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†');
                 return;
             }
             setUsers(Array.isArray(data.data) ? data.data : []);
         } catch {
-            setError('تعذر تحميل المستخدمين');
+            setError('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†');
         } finally {
             setLoading(false);
         }
@@ -233,22 +173,6 @@ export default function SuperAdminUsersPage() {
     const createRoles = useMemo(() => {
         return currentRole === 'sub_super_admin' ? subCreationRoles : allCreationRoles;
     }, [currentRole]);
-
-    const defaultTemplates = useMemo(() => {
-        const allowedRoles = new Set(createRoles);
-        return DEFAULT_ACCOUNT_TEMPLATES.filter((template) => allowedRoles.has(template.role));
-    }, [createRoles]);
-
-    const targetHotelIdForDefaults = useMemo(() => {
-        if (hotelFilter) return hotelFilter;
-        return hotels[0]?._id || '';
-    }, [hotelFilter, hotels]);
-
-    const targetHotelNameForDefaults = useMemo(() => {
-        if (!targetHotelIdForDefaults) return '-';
-        const match = hotels.find((hotel) => hotel._id === targetHotelIdForDefaults);
-        return match?.name || '-';
-    }, [hotels, targetHotelIdForDefaults]);
 
     const userStats = useMemo(() => {
         return {
@@ -277,15 +201,15 @@ export default function SuperAdminUsersPage() {
 
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'فشل إنشاء المستخدم');
+                setError(result.error || 'ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
                 return;
             }
 
-            setSuccess('تم إنشاء المستخدم بنجاح');
+            setSuccess('ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø¨Ù†Ø¬Ø§Ø­');
             await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
             reset({ role: 'admin' });
         } catch {
-            setError('فشل الاتصال بالخادم');
+            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
         } finally {
             setSubmitting(false);
         }
@@ -302,13 +226,13 @@ export default function SuperAdminUsersPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'فشل تحديث حالة الحساب');
+                setError(result.error || 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø­Ø³Ø§Ø¨');
                 return;
             }
             setUsers((prev) => prev.map((item) => (item._id === user._id ? { ...item, isActive: result.data.isActive } : item)));
-            setSuccess('تم تحديث الحالة');
+            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø­Ø§Ù„Ø©');
         } catch {
-            setError('فشل الاتصال بالخادم');
+            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
         }
     };
 
@@ -340,14 +264,14 @@ export default function SuperAdminUsersPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'فشل تحديث المستخدم');
+                setError(result.error || 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
                 return;
             }
-            setSuccess('تم تحديث المستخدم');
+            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
             setEditForm(null);
             await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
         } catch {
-            setError('فشل الاتصال بالخادم');
+            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
         } finally {
             setSavingEdit(false);
         }
@@ -358,17 +282,17 @@ export default function SuperAdminUsersPage() {
         setSuccess(null);
 
         if (!canDeleteUsers) {
-            setError('حذف الحسابات متاح للسوبر أدمن الرئيسي فقط');
+            setError('Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ù…ØªØ§Ø­ Ù„Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ ÙÙ‚Ø·');
             return;
         }
 
         if (user.role === 'super_admin') {
-            setError('لا يمكن حذف حساب السوبر أدمن الرئيسي');
+            setError('Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø­Ø°Ù Ø­Ø³Ø§Ø¨ Ø§Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ');
             return;
         }
 
         if (user._id === currentUserId) {
-            setError('لا يمكنك حذف حسابك الحالي');
+            setError('Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø­Ø°Ù Ø­Ø³Ø§Ø¨Ùƒ Ø§Ù„Ø­Ø§Ù„ÙŠ');
             return;
         }
 
@@ -393,7 +317,7 @@ export default function SuperAdminUsersPage() {
         setSuccess(null);
 
         if (deleteConfirmEmail.trim().toLowerCase() !== deleteForm.email.toLowerCase()) {
-            setError('يجب إدخال البريد الإلكتروني الصحيح لتأكيد الحذف');
+            setError('ÙŠØ¬Ø¨ Ø¥Ø¯Ø®Ø§Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ø§Ù„ØµØ­ÙŠØ­ Ù„ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø­Ø°Ù');
             return;
         }
 
@@ -405,7 +329,7 @@ export default function SuperAdminUsersPage() {
             const result = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                setError((result as { error?: string }).error || 'فشل حذف الحساب');
+                setError((result as { error?: string }).error || 'ÙØ´Ù„ Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨');
                 return;
             }
 
@@ -413,11 +337,11 @@ export default function SuperAdminUsersPage() {
             if (editForm?.userId === deleteForm.userId) {
                 setEditForm(null);
             }
-            setSuccess(`تم حذف الحساب: ${deleteForm.name}`);
+            setSuccess(`ØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨: ${deleteForm.name}`);
             setDeleteForm(null);
             setDeleteConfirmEmail('');
         } catch {
-            setError('فشل الاتصال بالخادم');
+            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
         } finally {
             setDeletingUserId(null);
         }
@@ -429,77 +353,14 @@ export default function SuperAdminUsersPage() {
         setHotelFilter('');
     };
 
-    const seedDefaultAccounts = async () => {
-        setError(null);
-        setSuccess(null);
-
-        if (defaultTemplates.length === 0) {
-            setError('لا توجد قوالب افتراضية متاحة لهذا الحساب');
-            return;
-        }
-
-        const needsHotel = defaultTemplates.some((item) => item.requiresHotel);
-        if (needsHotel && !targetHotelIdForDefaults) {
-            setError('أضف فندقًا واحدًا على الأقل أو اختر فندقًا من الفلاتر قبل إنشاء الحسابات الافتراضية');
-            return;
-        }
-
-        setSeedingDefaults(true);
-
-        let created = 0;
-        let skipped = 0;
-        const failed: string[] = [];
-
-        try {
-            for (const template of defaultTemplates) {
-                const response = await fetchWithRefresh('/api/super-admin/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: template.name,
-                        email: template.email,
-                        password: template.password,
-                        role: template.role,
-                        hotelId: template.requiresHotel ? targetHotelIdForDefaults : null,
-                    }),
-                });
-
-                const payload = await response.json().catch(() => ({} as { error?: string }));
-
-                if (response.ok) {
-                    created += 1;
-                    continue;
-                }
-
-                if (response.status === 409) {
-                    skipped += 1;
-                    continue;
-                }
-
-                failed.push(`${template.email}: ${payload.error || 'فشل الإنشاء'}`);
-            }
-
-            await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
-            setSuccess(`نتيجة إنشاء البيانات الافتراضية: ${created} تم إنشاؤها، ${skipped} موجودة مسبقًا`);
-
-            if (failed.length > 0) {
-                setError(`فشل إنشاء بعض الحسابات: ${failed.slice(0, 2).join(' | ')}`);
-            }
-        } catch {
-            setError('فشل إنشاء الحسابات الافتراضية');
-        } finally {
-            setSeedingDefaults(false);
-        }
-    };
-
     const hotelOptions = useMemo(() => hotels.map((hotel) => ({ value: hotel._id, label: hotel.name })), [hotels]);
     const selectedRoleIsPlatform = selectedRole === 'super_admin' || selectedRole === 'sub_super_admin';
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">إدارة المستخدمين والصلاحيات</h1>
-                <p className="mt-1 text-white/60">إدارة حسابات المنصة والفنادق وفق نطاق الصلاحيات المعتمد، مع حذف آمن للحسابات.</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† ÙˆØ§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª</h1>
+                <p className="mt-1 text-white/60">Ø¥Ø¯Ø§Ø±Ø© Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…Ù†ØµØ© ÙˆØ§Ù„ÙÙ†Ø§Ø¯Ù‚ ÙˆÙÙ‚ Ù†Ø·Ø§Ù‚ Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª Ø§Ù„Ù…Ø¹ØªÙ…Ø¯ØŒ Ù…Ø¹ Ø­Ø°Ù Ø¢Ù…Ù† Ù„Ù„Ø­Ø³Ø§Ø¨Ø§Øª.</p>
             </div>
 
             {(error || success) && (
@@ -511,19 +372,19 @@ export default function SuperAdminUsersPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">إجمالي الحسابات</p>
+                    <p className="text-xs text-white/50">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª</p>
                     <p className="text-lg font-semibold text-primary-300">{userStats.total}</p>
                 </div>
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">حسابات نشطة</p>
+                    <p className="text-xs text-white/50">Ø­Ø³Ø§Ø¨Ø§Øª Ù†Ø´Ø·Ø©</p>
                     <p className="text-lg font-semibold text-success-500">{userStats.active}</p>
                 </div>
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">حسابات غير نشطة</p>
+                    <p className="text-xs text-white/50">Ø­Ø³Ø§Ø¨Ø§Øª ØºÙŠØ± Ù†Ø´Ø·Ø©</p>
                     <p className="text-lg font-semibold text-danger-500">{userStats.inactive}</p>
                 </div>
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">حسابات المنصة</p>
+                    <p className="text-xs text-white/50">Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…Ù†ØµØ©</p>
                     <p className="text-lg font-semibold text-accent-300">{userStats.platform}</p>
                 </div>
             </div>
@@ -531,13 +392,13 @@ export default function SuperAdminUsersPage() {
             <div className="card p-5 space-y-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     <UserCog className="w-5 h-5 text-primary-300" />
-                    إنشاء مستخدم
+                    Ø¥Ù†Ø´Ø§Ø¡ Ù…Ø³ØªØ®Ø¯Ù…
                 </h2>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input {...register('name')} className="input-compact w-full" placeholder="الاسم" />
-                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="البريد الإلكتروني" dir="ltr" />
-                    <input {...register('password')} type="password" className="input-compact w-full" placeholder="كلمة المرور" dir="ltr" />
+                    <input {...register('name')} className="input-compact w-full" placeholder="Ø§Ù„Ø§Ø³Ù…" />
+                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" dir="ltr" />
+                    <input {...register('password')} type="password" className="input-compact w-full" placeholder="ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±" dir="ltr" />
                     <select {...register('role')} className="input-compact w-full">
                         {createRoles.map((value) => (
                             <option key={value} value={value}>{roleLabels[value] || value}</option>
@@ -546,7 +407,7 @@ export default function SuperAdminUsersPage() {
                     <div className="md:col-span-2 relative">
                         <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                         <select {...register('hotelId')} className="input-compact w-full pr-9" disabled={selectedRoleIsPlatform}>
-                            <option value="">اختر الفندق</option>
+                            <option value="">Ø§Ø®ØªØ± Ø§Ù„ÙÙ†Ø¯Ù‚</option>
                             {hotelOptions.map((hotel) => (
                                 <option key={hotel.value} value={hotel.value}>{hotel.label}</option>
                             ))}
@@ -554,50 +415,15 @@ export default function SuperAdminUsersPage() {
                     </div>
                     <div className="md:col-span-2 flex justify-end">
                         <button type="submit" className="btn-primary text-sm" disabled={submitting}>
-                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />إنشاء المستخدم</>}
+                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</>}
                         </button>
                     </div>
                 </form>
 
                 {(errors.name || errors.email || errors.password || errors.role || errors.hotelId) && (
-                    <p className="text-xs text-danger-500">يرجى مراجعة الحقول قبل الإرسال.</p>
+                    <p className="text-xs text-danger-500">ÙŠØ±Ø¬Ù‰ Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø­Ù‚ÙˆÙ„ Ù‚Ø¨Ù„ Ø§Ù„Ø¥Ø±Ø³Ø§Ù„.</p>
                 )}
-            </div>
-
-            <div className="card p-5 space-y-4">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                    <div>
-                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-accent-300" />
-                            بيانات افتراضية للحسابات
-                        </h2>
-                        <p className="text-xs text-white/60 mt-1">
-                            إنشاء حسابات جاهزة للتجربة بسرعة. كلمة المرور الافتراضية لكل الحسابات: <span dir="ltr" className="font-mono">Demo@12345</span>
-                        </p>
-                        <p className="text-xs text-white/50 mt-1">
-                            الفندق المستهدف للحسابات التشغيلية: <span className="text-white">{targetHotelNameForDefaults}</span>
-                        </p>
-                    </div>
-                    <button type="button" className="btn-secondary text-sm" onClick={seedDefaultAccounts} disabled={seedingDefaults}>
-                        {seedingDefaults ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />إضافة الحسابات الافتراضية</>}
-                    </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                    {defaultTemplates.map((template) => (
-                        <div key={template.key} className="surface-tile space-y-1">
-                            <p className="text-sm text-white font-medium">{template.name}</p>
-                            <p className="text-xs text-white/60">{roleLabels[template.role] || template.role}</p>
-                            <p className="text-xs text-white/60" dir="ltr">{template.email}</p>
-                            <p className="text-[11px] text-white/45">
-                                {template.requiresHotel ? `الفندق: ${targetHotelNameForDefaults}` : 'حساب منصة'}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="card p-5 space-y-4">
+            </div>`n            <div className="card p-5 space-y-4">
                 <div className="flex flex-col lg:flex-row gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -606,7 +432,7 @@ export default function SuperAdminUsersPage() {
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             className="input-compact w-full pr-9"
-                            placeholder="بحث بالاسم أو البريد الإلكتروني"
+                            placeholder="Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ"
                         />
                     </div>
                     <select
@@ -614,7 +440,7 @@ export default function SuperAdminUsersPage() {
                         onChange={(e) => setRoleFilter(e.target.value)}
                         className="input-compact min-w-[180px]"
                     >
-                        <option value="">كل الأدوار</option>
+                        <option value="">ÙƒÙ„ Ø§Ù„Ø£Ø¯ÙˆØ§Ø±</option>
                         {Object.entries(roleLabels).map(([value, label]) => (
                             <option key={value} value={value}>{label}</option>
                         ))}
@@ -624,13 +450,13 @@ export default function SuperAdminUsersPage() {
                         onChange={(e) => setHotelFilter(e.target.value)}
                         className="input-compact min-w-[180px]"
                     >
-                        <option value="">كل الفنادق</option>
+                        <option value="">ÙƒÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚</option>
                         {hotelOptions.map((hotel) => (
                             <option key={hotel.value} value={hotel.value}>{hotel.label}</option>
                         ))}
                     </select>
                     <button type="button" onClick={clearFilters} className="btn-secondary text-sm">
-                        مسح الفلاتر
+                        Ù…Ø³Ø­ Ø§Ù„ÙÙ„Ø§ØªØ±
                     </button>
                     <button
                         type="button"
@@ -641,26 +467,26 @@ export default function SuperAdminUsersPage() {
                         className="btn-secondary text-sm"
                     >
                         <RefreshCcw className="w-4 h-4" />
-                        تحديث
+                        ØªØ­Ø¯ÙŠØ«
                     </button>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center py-8"><div className="spinner w-10 h-10" /></div>
                 ) : users.length === 0 ? (
-                    <p className="text-white/60 text-center py-8">لا يوجد مستخدمون حاليًا.</p>
+                    <p className="text-white/60 text-center py-8">Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø³ØªØ®Ø¯Ù…ÙˆÙ† Ø­Ø§Ù„ÙŠÙ‹Ø§.</p>
                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>الاسم</th>
-                                    <th>البريد</th>
-                                    <th>الدور</th>
-                                    <th>الفندق</th>
-                                    <th>تم الإنشاء بواسطة</th>
-                                    <th>الحالة</th>
-                                    <th>إجراءات</th>
+                                    <th>Ø§Ù„Ø§Ø³Ù…</th>
+                                    <th>Ø§Ù„Ø¨Ø±ÙŠØ¯</th>
+                                    <th>Ø§Ù„Ø¯ÙˆØ±</th>
+                                    <th>Ø§Ù„ÙÙ†Ø¯Ù‚</th>
+                                    <th>ØªÙ… Ø§Ù„Ø¥Ù†Ø´Ø§Ø¡ Ø¨ÙˆØ§Ø³Ø·Ø©</th>
+                                    <th>Ø§Ù„Ø­Ø§Ù„Ø©</th>
+                                    <th>Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -674,7 +500,7 @@ export default function SuperAdminUsersPage() {
                                             <td className="font-medium text-white">
                                                 <div className="flex items-center gap-2">
                                                     <span>{user.name}</span>
-                                                    {isSelf && <span className="badge-primary text-[10px]">حسابك</span>}
+                                                    {isSelf && <span className="badge-primary text-[10px]">Ø­Ø³Ø§Ø¨Ùƒ</span>}
                                                 </div>
                                             </td>
                                             <td className="text-white/60" dir="ltr">{user.email}</td>
@@ -683,33 +509,33 @@ export default function SuperAdminUsersPage() {
                                             <td className="text-white/60">{user.createdBy?.name || '-'}</td>
                                             <td>
                                                 {user.isActive ? (
-                                                    <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />نشط</span>
+                                                    <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />Ù†Ø´Ø·</span>
                                                 ) : (
-                                                    <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />غير نشط</span>
+                                                    <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />ØºÙŠØ± Ù†Ø´Ø·</span>
                                                 )}
                                             </td>
                                             <td>
                                                 <div className="flex flex-wrap gap-1">
                                                     <button onClick={() => toggleUserStatus(user)} className="btn-secondary text-xs" disabled={isSelf && user.isActive}>
-                                                        {user.isActive ? 'تعطيل' : 'تفعيل'}
+                                                        {user.isActive ? 'ØªØ¹Ø·ÙŠÙ„' : 'ØªÙØ¹ÙŠÙ„'}
                                                     </button>
                                                     <button onClick={() => openEditUser(user)} className="btn-secondary text-xs">
                                                         <Pencil className="w-3.5 h-3.5" />
-                                                        تعديل
+                                                        ØªØ¹Ø¯ÙŠÙ„
                                                     </button>
                                                     {canDeleteUsers && (
                                                         <button
                                                             onClick={() => openDeleteUser(user)}
                                                             className="btn-danger text-xs"
                                                             disabled={deleteDisabled}
-                                                            title={isSelf ? 'لا يمكنك حذف حسابك' : isMainSuper ? 'لا يمكن حذف السوبر أدمن الرئيسي' : 'حذف الحساب'}
+                                                            title={isSelf ? 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø­Ø°Ù Ø­Ø³Ø§Ø¨Ùƒ' : isMainSuper ? 'Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø­Ø°Ù Ø§Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ' : 'Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨'}
                                                         >
                                                             {deletingUserId === user._id ? (
                                                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                             ) : (
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             )}
-                                                            حذف
+                                                            Ø­Ø°Ù
                                                         </button>
                                                     )}
                                                 </div>
@@ -725,20 +551,20 @@ export default function SuperAdminUsersPage() {
 
             {editForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">تعديل حساب المستخدم</h3>
+                    <h3 className="text-base font-semibold text-white">ØªØ¹Ø¯ÙŠÙ„ Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input value={editForm.name} onChange={(e) => setEditForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="الاسم" />
-                        <input value={editForm.email} onChange={(e) => setEditForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="البريد الإلكتروني" dir="ltr" />
-                        <input value={editForm.phone} onChange={(e) => setEditForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="رقم الهاتف" dir="ltr" />
+                        <input value={editForm.name} onChange={(e) => setEditForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø§Ù„Ø§Ø³Ù…" />
+                        <input value={editForm.email} onChange={(e) => setEditForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" dir="ltr" />
+                        <input value={editForm.phone} onChange={(e) => setEditForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ" dir="ltr" />
                         <label className="surface-tile flex items-center justify-between text-sm">
-                            تفعيل الحساب
+                            ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨
                             <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} />
                         </label>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button className="btn-secondary text-sm" onClick={() => setEditForm(null)}>إغلاق</button>
+                        <button className="btn-secondary text-sm" onClick={() => setEditForm(null)}>Ø¥ØºÙ„Ø§Ù‚</button>
                         <button className="btn-primary text-sm" onClick={saveUserEdit} disabled={savingEdit}>
-                            {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ التعديلات'}
+                            {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ø­ÙØ¸ Ø§Ù„ØªØ¹Ø¯ÙŠÙ„Ø§Øª'}
                         </button>
                     </div>
                 </div>
@@ -748,29 +574,29 @@ export default function SuperAdminUsersPage() {
                 <div className="card p-5 space-y-4 border border-danger-500/30">
                     <h3 className="text-base font-semibold text-white flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-danger-500" />
-                        تأكيد حذف الحساب
+                        ØªØ£ÙƒÙŠØ¯ Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨
                     </h3>
                     <p className="text-sm text-white/70">
-                        سيتم حذف الحساب <span className="text-white font-medium">{deleteForm.name}</span> نهائيًا.
-                        اكتب البريد الإلكتروني لتأكيد العملية:
+                        Ø³ÙŠØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ <span className="text-white font-medium">{deleteForm.name}</span> Ù†Ù‡Ø§Ø¦ÙŠÙ‹Ø§.
+                        Ø§ÙƒØªØ¨ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¹Ù…Ù„ÙŠØ©:
                     </p>
                     <div className="surface-tile">
-                        <p className="text-xs text-white/50 mb-1">البريد المطلوب للتأكيد</p>
+                        <p className="text-xs text-white/50 mb-1">Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ù„Ù„ØªØ£ÙƒÙŠØ¯</p>
                         <p className="text-sm text-white font-medium" dir="ltr">{deleteForm.email}</p>
                     </div>
                     <input
                         value={deleteConfirmEmail}
                         onChange={(e) => setDeleteConfirmEmail(e.target.value)}
                         className="input-compact w-full"
-                        placeholder="أدخل البريد الإلكتروني للتأكيد"
+                        placeholder="Ø£Ø¯Ø®Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„Ù„ØªØ£ÙƒÙŠØ¯"
                         dir="ltr"
                     />
                     <div className="flex justify-end gap-2">
                         <button className="btn-secondary text-sm" onClick={closeDeleteUser} disabled={Boolean(deletingUserId)}>
-                            إلغاء
+                            Ø¥Ù„ØºØ§Ø¡
                         </button>
                         <button className="btn-danger text-sm" onClick={confirmDeleteUser} disabled={Boolean(deletingUserId)}>
-                            {deletingUserId ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" />تأكيد الحذف</>}
+                            {deletingUserId ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" />ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø­Ø°Ù</>}
                         </button>
                     </div>
                 </div>
@@ -779,9 +605,10 @@ export default function SuperAdminUsersPage() {
             {!canDeleteUsers && (
                 <div className="surface-tile text-xs text-white/60 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    حذف الحسابات متاح فقط للسوبر أدمن الرئيسي.
+                    Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ù…ØªØ§Ø­ ÙÙ‚Ø· Ù„Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ.
                 </div>
             )}
         </div>
     );
 }
+
