@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+﻿import { Types } from 'mongoose';
 import { Hotel } from '@/core/db/models';
 import type { SubscriptionHotelNotificationType } from '@/core/notifications/types';
 import {
@@ -26,6 +26,7 @@ interface HotelSubscriptionSnapshot {
 export interface SubscriptionNotificationSweepResult {
     scannedHotels: number;
     warningQueued: number;
+    graceStartedQueued: number;
     graceFinalQueued: number;
     totalQueued: number;
 }
@@ -35,7 +36,11 @@ function formatDateForMessage(value: Date): string {
 }
 
 function buildWarningMessage(endDate: Date): string {
-    return `تنبيه اشتراك: الاشتراك سينتهي بتاريخ ${formatDateForMessage(endDate)}. يرجى التجديد قبل الانتهاء لتجنب إيقاف الحساب.`;
+    return `تنبيه اشتراك: سينتهي اشتراك الفندق بتاريخ ${formatDateForMessage(endDate)}. يرجى التجديد قبل الانتهاء لتجنب تعليق الحساب.`;
+}
+
+function buildGraceStartedMessage(graceEndDate: Date): string {
+    return `دخل اشتراك الفندق في مهلة السماح. آخر يوم للسداد هو ${formatDateForMessage(graceEndDate)}.`;
 }
 
 function buildGraceFinalMessage(graceEndDate: Date): string {
@@ -47,6 +52,7 @@ async function pushNotificationIfMissing(params: {
     type: SubscriptionHotelNotificationType;
     message: string;
     createdAt: Date;
+    actionUrl?: string | null;
 }): Promise<boolean> {
     const result = await Hotel.updateOne(
         {
@@ -68,6 +74,9 @@ async function pushNotificationIfMissing(params: {
                             type: params.type,
                             message: params.message,
                             createdAt: params.createdAt,
+                            isRead: false,
+                            readAt: null,
+                            actionUrl: params.actionUrl || '/dashboard/settings',
                         },
                     ],
                     $slice: -MAX_NOTIFICATION_LOG_ITEMS,
@@ -93,13 +102,13 @@ export async function runSubscriptionNotificationSweep(
 
     const counters = {
         warningQueued: 0,
+        graceStartedQueued: 0,
         graceFinalQueued: 0,
     };
 
     const writes: Promise<void>[] = [];
     for (const hotel of hotels) {
-        const subscriptionExpiryEnabled =
-            hotel.settings?.notifications?.subscriptionExpiry ?? true;
+        const subscriptionExpiryEnabled = hotel.settings?.notifications?.subscriptionExpiry ?? true;
         if (!subscriptionExpiryEnabled) continue;
 
         if (hotel.subscription?.status === 'suspended') continue;
@@ -120,8 +129,28 @@ export async function runSubscriptionNotificationSweep(
                     type: 'subscription_warning',
                     message: buildWarningMessage(timeline.endDate),
                     createdAt: now,
+                    actionUrl: '/dashboard/settings',
                 }).then((created) => {
                     if (created) counters.warningQueued += 1;
+                })
+            );
+        }
+
+        if (
+            timeline.isInGracePeriod &&
+            timeline.graceEndDate &&
+            timeline.daysUntilSuspension !== null &&
+            timeline.daysUntilSuspension > 1
+        ) {
+            writes.push(
+                pushNotificationIfMissing({
+                    hotelId: hotel._id,
+                    type: 'subscription_grace_started',
+                    message: buildGraceStartedMessage(timeline.graceEndDate),
+                    createdAt: now,
+                    actionUrl: '/dashboard/settings',
+                }).then((created) => {
+                    if (created) counters.graceStartedQueued += 1;
                 })
             );
         }
@@ -138,6 +167,7 @@ export async function runSubscriptionNotificationSweep(
                     type: 'subscription_grace_final',
                     message: buildGraceFinalMessage(timeline.graceEndDate),
                     createdAt: now,
+                    actionUrl: '/dashboard/settings',
                 }).then((created) => {
                     if (created) counters.graceFinalQueued += 1;
                 })
@@ -152,7 +182,9 @@ export async function runSubscriptionNotificationSweep(
     return {
         scannedHotels: hotels.length,
         warningQueued: counters.warningQueued,
+        graceStartedQueued: counters.graceStartedQueued,
         graceFinalQueued: counters.graceFinalQueued,
-        totalQueued: counters.warningQueued + counters.graceFinalQueued,
+        totalQueued:
+            counters.warningQueued + counters.graceStartedQueued + counters.graceFinalQueued,
     };
 }

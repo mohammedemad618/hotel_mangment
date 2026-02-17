@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
 import { Hotel, User } from '@/core/db/models';
 import { withAuth, withPermission, AuthContext } from '@/core/middleware/auth';
 import { PERMISSIONS } from '@/core/auth';
 import { hotelSettingsSchema } from '@/lib/validations';
 import { runSubscriptionNotificationSweep } from '@/core/subscription/notifications';
+import { normalizeHotelNotifications } from '@/core/notifications/catalog';
 
 async function handler(
-    request: NextRequest,
-    context: { params: Promise<Record<string, string>> },
+    _request: NextRequest,
+    _context: { params: Promise<Record<string, string>> },
     auth: AuthContext
 ) {
     try {
@@ -27,10 +28,7 @@ async function handler(
             .populate('hotel', 'name slug email phone address settings subscription notificationsLog logo');
 
         if (!user) {
-            return NextResponse.json(
-                { error: 'المستخدم غير موجود' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
         }
 
         const hotelData = user.hotel
@@ -40,9 +38,7 @@ async function handler(
             : null;
 
         if (hotelData?.notificationsLog && Array.isArray(hotelData.notificationsLog)) {
-            hotelData.notificationsLog = hotelData.notificationsLog
-                .slice(-20)
-                .reverse();
+            hotelData.notificationsLog = normalizeHotelNotifications(hotelData.notificationsLog).slice(0, 50);
         }
 
         return NextResponse.json({
@@ -60,7 +56,6 @@ async function handler(
                 hotel: hotelData,
             },
         });
-
     } catch (error) {
         console.error('Get current user error:', error);
         return NextResponse.json(
@@ -74,7 +69,7 @@ export const GET = withAuth(handler);
 
 async function updateSettings(
     request: NextRequest,
-    context: { params: Promise<Record<string, string>> },
+    _context: { params: Promise<Record<string, string>> },
     auth: AuthContext
 ) {
     try {
@@ -105,7 +100,7 @@ async function updateSettings(
 
         if (existingHotel) {
             return NextResponse.json(
-                { error: 'البريد الإلكتروني مستخدم مسبقاً' },
+                { error: 'البريد الإلكتروني مستخدم مسبقًا' },
                 { status: 409 }
             );
         }
@@ -140,10 +135,7 @@ async function updateSettings(
         ).lean();
 
         if (!updatedHotel) {
-            return NextResponse.json(
-                { error: 'الفندق غير موجود' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'الفندق غير موجود' }, { status: 404 });
         }
 
         return NextResponse.json({ success: true, data: updatedHotel });

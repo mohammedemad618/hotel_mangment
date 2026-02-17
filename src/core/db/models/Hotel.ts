@@ -52,9 +52,13 @@ export interface IHotel extends Document {
         };
     };
     notificationsLog?: Array<{
+        _id?: Types.ObjectId;
         type: HotelNotificationType;
         message: string;
         createdAt: Date;
+        isRead?: boolean;
+        readAt?: Date | null;
+        actionUrl?: string | null;
     }>;
     logo?: string;
     isActive: boolean;
@@ -151,6 +155,9 @@ const HotelSchema = new Schema<IHotel>(
                 },
                 message: { type: String, required: true },
                 createdAt: { type: Date, default: Date.now },
+                isRead: { type: Boolean, default: false },
+                readAt: { type: Date, default: null },
+                actionUrl: { type: String, default: null },
             },
         ],
         logo: { type: String },
@@ -166,6 +173,9 @@ const HotelSchema = new Schema<IHotel>(
 // Indexes
 HotelSchema.index({ isActive: 1 });
 HotelSchema.index({ 'subscription.status': 1 });
+HotelSchema.index({ 'subscription.endDate': 1, 'subscription.status': 1 });
+HotelSchema.index({ createdBy: 1, 'subscription.endDate': 1, 'subscription.status': 1 });
+HotelSchema.index({ 'subscription.renewalRequest.isPending': 1, 'subscription.endDate': 1 });
 HotelSchema.index({ 'verification.isVerified': 1 });
 
 export const Hotel: Model<IHotel> =

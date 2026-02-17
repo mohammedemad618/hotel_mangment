@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -18,10 +18,12 @@ import {
     Search,
     Wallet,
     BarChart3,
+    Bell,
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 import type { HotelNotificationType } from '@/core/notifications/types';
+import type { HotelNotificationCategory } from '@/core/notifications/catalog';
 
 export interface HotelSettings {
     currency: string;
@@ -54,9 +56,14 @@ export interface HotelProfile {
 }
 
 export interface HotelNotification {
+    id: string;
     type: HotelNotificationType;
+    category: HotelNotificationCategory;
     message: string;
     createdAt: string;
+    isRead: boolean;
+    readAt: string | null;
+    actionUrl: string | null;
 }
 
 interface UserData {
@@ -65,20 +72,20 @@ interface UserData {
     email: string;
     role: string;
     hotelId: string | null;
-        hotel?: {
-            name?: string;
-            email?: string;
-            phone?: string;
-            logo?: string;
-            address?: {
-                street?: string;
-                city?: string;
-                country?: string;
-                postalCode?: string;
-            };
-            settings?: HotelSettings;
-            notificationsLog?: HotelNotification[];
+    hotel?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        logo?: string;
+        address?: {
+            street?: string;
+            city?: string;
+            country?: string;
+            postalCode?: string;
         };
+        settings?: HotelSettings;
+        notificationsLog?: HotelNotification[];
+    };
 }
 
 interface HotelSettingsContextValue {
@@ -126,9 +133,15 @@ export default function DashboardLayout({
     const [settings, setSettings] = useState<HotelSettings | null>(null);
     const [notifications, setNotifications] = useState<HotelNotification[]>([]);
     const [hotelProfile, setHotelProfile] = useState<HotelProfile | null>(null);
+
     const lang = normalizeLanguage(settings?.language);
     const language = settings?.language;
     const theme = settings?.theme;
+
+    const unreadNotifications = useMemo(
+        () => notifications.filter((item) => !item.isRead).length,
+        [notifications]
+    );
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -138,8 +151,10 @@ export default function DashboardLayout({
                     router.push('/login');
                     return;
                 }
+
                 const data = await response.json();
                 setUser(data.user);
+
                 const hotelSettings = data.user?.hotel?.settings || {};
                 setHotelProfile({
                     name: data.user?.hotel?.name,
@@ -148,9 +163,11 @@ export default function DashboardLayout({
                     logo: data.user?.hotel?.logo,
                     address: data.user?.hotel?.address,
                 });
+
                 const hotelNotifications = Array.isArray(data.user?.hotel?.notificationsLog)
                     ? data.user.hotel.notificationsLog
                     : [];
+
                 setSettings({
                     currency: hotelSettings.currency || 'SAR',
                     timezone: hotelSettings.timezone || 'Asia/Riyadh',
@@ -167,8 +184,9 @@ export default function DashboardLayout({
                         subscriptionExpiry: hotelSettings.notifications?.subscriptionExpiry ?? true,
                     },
                 });
+
                 setNotifications(hotelNotifications);
-            } catch (error) {
+            } catch {
                 router.push('/login');
             } finally {
                 setLoading(false);
@@ -179,17 +197,15 @@ export default function DashboardLayout({
     }, [router]);
 
     useEffect(() => {
-        if (!language) {
-            return;
-        }
+        if (!language) return;
 
         const root = document.documentElement;
         root.lang = language === 'en' ? 'en' : 'ar';
         root.dir = language === 'en' ? 'ltr' : 'rtl';
 
-        const applyTheme = (theme: 'light' | 'dark') => {
+        const applyTheme = (nextTheme: 'light' | 'dark') => {
             root.classList.remove('light', 'dark');
-            root.classList.add(theme);
+            root.classList.add(nextTheme);
         };
 
         if (theme === 'system') {
@@ -218,7 +234,6 @@ export default function DashboardLayout({
 
     return (
         <div className="min-h-screen text-white/90">
-            {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <div
                     className="fixed inset-0 z-40 bg-black/60 lg:hidden"
@@ -226,13 +241,12 @@ export default function DashboardLayout({
                 />
             )}
 
-            {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
-                    }`}
+                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${
+                    sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+                }`}
             >
                 <div className="flex flex-col h-full">
-                    {/* Logo */}
                     <div className="flex items-center justify-between h-16 px-6 border-b border-white/5">
                         <Link href="/dashboard" className="flex items-center gap-3">
                             <div className="p-2 bg-primary-500/20 border border-primary-500/40 rounded-lg shadow-glass">
@@ -248,7 +262,6 @@ export default function DashboardLayout({
                         </button>
                     </div>
 
-                    {/* Navigation */}
                     <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                         {navigation.map((item) => {
                             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -256,10 +269,11 @@ export default function DashboardLayout({
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border ${isActive
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border ${
+                                        isActive
                                             ? 'bg-primary-500/15 text-white border-primary-500/40'
                                             : 'text-white/60 border-transparent hover:bg-white/5 hover:text-white'
-                                        }`}
+                                    }`}
                                 >
                                     <item.icon className="w-5 h-5" />
                                     <span className="font-medium">{item.name[lang]}</span>
@@ -269,19 +283,14 @@ export default function DashboardLayout({
                         })}
                     </nav>
 
-                    {/* User */}
                     <div className="p-4 border-t border-white/5">
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
                             <div className="p-2 bg-primary-500/20 rounded-full">
                                 <User className="w-5 h-5 text-primary-300" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">
-                                    {user?.name}
-                                </p>
-                                <p className="text-xs text-white/50 truncate">
-                                    {user?.email}
-                                </p>
+                                <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+                                <p className="text-xs text-white/50 truncate">{user?.email}</p>
                             </div>
                         </div>
                         <button
@@ -295,9 +304,7 @@ export default function DashboardLayout({
                 </div>
             </aside>
 
-            {/* Main content */}
             <div className="lg:mr-72">
-                {/* Header */}
                 <header className="sticky top-0 z-30 bg-[color:var(--app-surface)] backdrop-blur-xl border-b border-white/10">
                     <div className="flex items-center h-16 px-4 sm:px-6 lg:px-8 gap-4">
                         <button
@@ -310,21 +317,33 @@ export default function DashboardLayout({
                             <Search className="w-4 h-4 text-white/40" />
                             <input
                                 className="bg-transparent text-sm text-white/80 placeholder-white/40 focus:outline-none w-full"
-                                placeholder={t(lang, 'ابحث عن غرفة، نزيل، أو حجز...', 'Search for a room, guest, or booking...')}
+                                placeholder={t(
+                                    lang,
+                                    'ابحث عن غرفة، نزيل، أو حجز...',
+                                    'Search for a room, guest, or booking...'
+                                )}
                             />
                         </div>
+
                         <div className="flex-1 md:flex-none" />
+
+                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70">
+                            <Bell className="w-4 h-4 text-primary-300" />
+                            <span>
+                                {t(lang, 'غير المقروءة', 'Unread')}: {unreadNotifications}
+                            </span>
+                        </div>
+
                         <span className="text-xs text-white/50 hidden sm:inline">
                             {t(lang, 'الإصدار الاحترافي', 'Pro Edition')}
                         </span>
                     </div>
                 </header>
 
-                {/* Page content */}
-                <SettingsContext.Provider value={{ settings, setSettings, notifications, setNotifications, hotelProfile, setHotelProfile }}>
-                    <main className="p-4 sm:p-6 lg:p-8">
-                        {children}
-                    </main>
+                <SettingsContext.Provider
+                    value={{ settings, setSettings, notifications, setNotifications, hotelProfile, setHotelProfile }}
+                >
+                    <main className="p-4 sm:p-6 lg:p-8">{children}</main>
                 </SettingsContext.Provider>
             </div>
         </div>

@@ -196,9 +196,14 @@ export default function NewBookingPage() {
                 );
                 setNotifications((prev) => [
                     {
+                        id: `local-booking-${Date.now()}`,
                         type: 'booking_new' as const,
+                        category: 'booking' as const,
                         message,
                         createdAt: new Date().toISOString(),
+                        isRead: false,
+                        readAt: null,
+                        actionUrl: '/dashboard/bookings',
                     },
                     ...prev,
                 ].slice(0, 20));

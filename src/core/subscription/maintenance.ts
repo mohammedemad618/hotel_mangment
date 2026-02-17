@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+﻿import { Types } from 'mongoose';
 import { Hotel } from '@/core/db/models';
 import { addDays, SUBSCRIPTION_GRACE_DAYS } from '@/core/subscription/policy';
 
@@ -15,6 +15,54 @@ export interface SubscriptionMaintenanceResult {
     scannedOverdue: number;
     updatedCount: number;
     affectedIds: string[];
+}
+
+const MAX_NOTIFICATION_LOG_ITEMS = 50;
+
+const SUSPENSION_MESSAGE =
+    'تم تعليق اشتراك الفندق تلقائيًا بعد انتهاء مهلة السماح. يرجى السداد وتجديد الاشتراك لإعادة تفعيل الحساب.';
+
+async function suspendHotelWithNotification(hotelId: Types.ObjectId | string, now: Date): Promise<boolean> {
+    const result = await Hotel.updateOne(
+        {
+            _id: hotelId,
+            $or: [
+                { 'subscription.status': { $ne: 'suspended' } },
+                { isActive: { $ne: false } },
+            ],
+            notificationsLog: {
+                $not: {
+                    $elemMatch: {
+                        type: 'subscription_suspended',
+                        message: SUSPENSION_MESSAGE,
+                    },
+                },
+            },
+        },
+        {
+            $set: {
+                'subscription.status': 'suspended',
+                isActive: false,
+            },
+            $push: {
+                notificationsLog: {
+                    $each: [
+                        {
+                            type: 'subscription_suspended',
+                            message: SUSPENSION_MESSAGE,
+                            createdAt: now,
+                            isRead: false,
+                            readAt: null,
+                            actionUrl: '/dashboard/settings',
+                        },
+                    ],
+                    $slice: -MAX_NOTIFICATION_LOG_ITEMS,
+                },
+            },
+        }
+    );
+
+    return result.modifiedCount > 0;
 }
 
 export async function runSubscriptionMaintenance(
@@ -35,15 +83,8 @@ export async function runSubscriptionMaintenance(
         .map((hotel) => hotel._id);
 
     if (idsToUpdate.length > 0) {
-        await Hotel.updateMany(
-            { _id: { $in: idsToUpdate } },
-            {
-                $set: {
-                    'subscription.status': 'suspended',
-                    isActive: false,
-                },
-            }
-        );
+        const writes = idsToUpdate.map((hotelId) => suspendHotelWithNotification(hotelId, now));
+        await Promise.all(writes);
     }
 
     return {

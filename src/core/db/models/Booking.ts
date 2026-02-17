@@ -175,7 +175,10 @@ BookingSchema.index({ hotelId: 1, status: 1 });
 BookingSchema.index({ hotelId: 1, roomId: 1, checkInDate: 1, checkOutDate: 1 });
 BookingSchema.index({ hotelId: 1, guestId: 1 });
 BookingSchema.index({ hotelId: 1, checkInDate: 1 });
+BookingSchema.index({ hotelId: 1, checkOutDate: 1, status: 1 });
 BookingSchema.index({ hotelId: 1, 'payment.status': 1 });
+BookingSchema.index({ hotelId: 1, source: 1, checkInDate: 1 });
+BookingSchema.index({ hotelId: 1, checkOutDate: 1, 'payment.paidAmount': 1 });
 BookingSchema.index({ hotelId: 1, createdAt: -1 });
 
 // Virtuals

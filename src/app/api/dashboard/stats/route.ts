@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
 import { Booking, Guest, Room } from '@/core/db/models';
 import { withPermission, AuthContext } from '@/core/middleware/auth';
@@ -16,6 +16,11 @@ const getMonthRange = (date: Date) => {
     const start = new Date(date.getFullYear(), date.getMonth(), 1);
     const end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
     return { start, end };
+};
+
+const percent = (value: number, total: number): number => {
+    if (total <= 0) return 0;
+    return Math.round((value / total) * 100);
 };
 
 async function handler(
@@ -45,8 +50,11 @@ async function handler(
             todayCheckIns,
             todayCheckOuts,
             specialRequestsToday,
-            monthlyRevenueAgg,
+            monthRevenueAgg,
             lastMonthRevenueAgg,
+            outstandingAgg,
+            overdueAgg,
+            directShareAgg,
         ] = await Promise.all([
             Room.countDocuments({ isActive: true }),
             Room.countDocuments({ isActive: true, status: 'available' }),
@@ -74,7 +82,13 @@ async function handler(
                         checkOutDate: { $gte: startOfMonth, $lt: endOfMonth },
                     },
                 },
-                { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+                {
+                    $group: {
+                        _id: null,
+                        revenue: { $sum: '$pricing.total' },
+                        paid: { $sum: { $ifNull: ['$payment.paidAmount', 0] } },
+                    },
+                },
             ]),
             Booking.aggregate([
                 {
@@ -83,12 +97,80 @@ async function handler(
                         checkOutDate: { $gte: startOfLastMonth, $lt: endOfLastMonth },
                     },
                 },
-                { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+                { $group: { _id: null, revenue: { $sum: '$pricing.total' } } },
+            ]),
+            Booking.aggregate([
+                { $match: activeBookingFilter },
+                {
+                    $project: {
+                        remaining: {
+                            $max: [
+                                {
+                                    $subtract: [
+                                        '$pricing.total',
+                                        { $ifNull: ['$payment.paidAmount', 0] },
+                                    ],
+                                },
+                                0,
+                            ],
+                        },
+                    },
+                },
+                { $group: { _id: null, total: { $sum: '$remaining' } } },
+            ]),
+            Booking.aggregate([
+                {
+                    $match: {
+                        ...activeBookingFilter,
+                        checkOutDate: { $lt: now },
+                    },
+                },
+                {
+                    $project: {
+                        remaining: {
+                            $max: [
+                                {
+                                    $subtract: [
+                                        '$pricing.total',
+                                        { $ifNull: ['$payment.paidAmount', 0] },
+                                    ],
+                                },
+                                0,
+                            ],
+                        },
+                    },
+                },
+                { $match: { remaining: { $gt: 0 } } },
+                { $count: 'count' },
+            ]),
+            Booking.aggregate([
+                {
+                    $match: {
+                        ...activeBookingFilter,
+                        checkInDate: { $gte: startOfMonth, $lt: endOfMonth },
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: 1 },
+                        direct: {
+                            $sum: {
+                                $cond: [{ $eq: ['$source', 'direct'] }, 1, 0],
+                            },
+                        },
+                    },
+                },
             ]),
         ]);
 
-        const monthlyRevenue = monthlyRevenueAgg[0]?.total || 0;
-        const lastMonthRevenue = lastMonthRevenueAgg[0]?.total || 0;
+        const monthlyRevenue = monthRevenueAgg[0]?.revenue || 0;
+        const monthPaid = monthRevenueAgg[0]?.paid || 0;
+        const lastMonthRevenue = lastMonthRevenueAgg[0]?.revenue || 0;
+        const outstandingBalance = outstandingAgg[0]?.total || 0;
+        const overduePayments = overdueAgg[0]?.count || 0;
+        const directBookings = directShareAgg[0]?.direct || 0;
+        const totalMonthlyBookings = directShareAgg[0]?.total || 0;
 
         return NextResponse.json({
             success: true,
@@ -104,6 +186,11 @@ async function handler(
                 specialRequestsToday,
                 monthlyRevenue,
                 lastMonthRevenue,
+                outstandingBalance,
+                overduePayments,
+                occupancyRate: percent(occupiedRooms, totalRooms),
+                collectionRate: percent(monthPaid, monthlyRevenue),
+                directChannelShare: percent(directBookings, totalMonthlyBookings),
             },
         });
     } catch (error) {
