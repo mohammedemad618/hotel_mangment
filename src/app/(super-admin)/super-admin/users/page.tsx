@@ -52,20 +52,32 @@ interface DeleteUserForm {
     role: string;
 }
 
-
 const roleLabels: Record<string, string> = {
-    super_admin: 'Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø±Ø¦ÙŠØ³ÙŠ',
-    sub_super_admin: 'ØµØ¨ Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù†',
-    admin: 'Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚',
-    manager: 'Ù…Ø¯ÙŠØ± ØªØ´ØºÙŠÙ„ÙŠ',
-    receptionist: 'Ù…ÙˆØ¸Ù Ø§Ø³ØªÙ‚Ø¨Ø§Ù„',
-    housekeeping: 'Ø¥Ø´Ø±Ø§Ù Ù†Ø¸Ø§ÙØ©',
-    accountant: 'Ù…Ø­Ø§Ø³Ø¨',
+    super_admin: 'سوبر أدمن رئيسي',
+    sub_super_admin: 'صب سوبر أدمن',
+    admin: 'مدير الفندق',
+    manager: 'مدير تشغيلي',
+    receptionist: 'موظف استقبال',
+    housekeeping: 'إشراف نظافة',
+    accountant: 'محاسب',
 };
 
-const allCreationRoles = ['sub_super_admin', 'admin', 'manager', 'receptionist', 'housekeeping', 'accountant'];
-const subCreationRoles = ['admin', 'manager', 'receptionist', 'housekeeping', 'accountant'];
+const allCreationRoles: CreateUserInput['role'][] = [
+    'sub_super_admin',
+    'admin',
+    'manager',
+    'receptionist',
+    'housekeeping',
+    'accountant',
+];
 
+const subCreationRoles: CreateUserInput['role'][] = [
+    'admin',
+    'manager',
+    'receptionist',
+    'housekeeping',
+    'accountant',
+];
 
 export default function SuperAdminUsersPage() {
     const [currentRole, setCurrentRole] = useState<'super_admin' | 'sub_super_admin' | null>(null);
@@ -114,7 +126,7 @@ export default function SuperAdminUsersPage() {
                 setCurrentUserId(data.user.id || null);
             }
         } catch {
-            // layout handles auth redirection
+            // Layout handles auth redirection.
         }
     };
 
@@ -123,12 +135,12 @@ export default function SuperAdminUsersPage() {
             const response = await fetchWithRefresh('/api/super-admin/hotels?limit=200');
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚');
+                setError(data.error || 'تعذر تحميل الفنادق');
                 return;
             }
             setHotels(Array.isArray(data.data) ? data.data : []);
         } catch {
-            setError('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚');
+            setError('تعذر تحميل الفنادق');
         }
     };
 
@@ -139,15 +151,15 @@ export default function SuperAdminUsersPage() {
             if (params?.role) query.set('role', params.role);
             if (params?.hotelId) query.set('hotelId', params.hotelId);
 
-            const response = await fetchWithRefresh(`/api/super-admin/users?${query}`);
+            const response = await fetchWithRefresh(`/api/super-admin/users?${query.toString()}`);
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†');
+                setError(data.error || 'تعذر تحميل المستخدمين');
                 return;
             }
             setUsers(Array.isArray(data.data) ? data.data : []);
         } catch {
-            setError('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†');
+            setError('تعذر تحميل المستخدمين');
         } finally {
             setLoading(false);
         }
@@ -179,7 +191,9 @@ export default function SuperAdminUsersPage() {
             total: users.length,
             active: users.filter((item) => item.isActive).length,
             inactive: users.filter((item) => !item.isActive).length,
-            platform: users.filter((item) => item.role === 'super_admin' || item.role === 'sub_super_admin').length,
+            platform: users.filter(
+                (item) => item.role === 'super_admin' || item.role === 'sub_super_admin'
+            ).length,
         };
     }, [users]);
 
@@ -201,15 +215,15 @@ export default function SuperAdminUsersPage() {
 
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
+                setError(result.error || 'فشل إنشاء المستخدم');
                 return;
             }
 
-            setSuccess('ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø¨Ù†Ø¬Ø§Ø­');
+            setSuccess('تم إنشاء المستخدم بنجاح');
             await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
             reset({ role: 'admin' });
         } catch {
-            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
+            setError('فشل الاتصال بالخادم');
         } finally {
             setSubmitting(false);
         }
@@ -226,13 +240,17 @@ export default function SuperAdminUsersPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø­Ø³Ø§Ø¨');
+                setError(result.error || 'فشل تحديث حالة الحساب');
                 return;
             }
-            setUsers((prev) => prev.map((item) => (item._id === user._id ? { ...item, isActive: result.data.isActive } : item)));
-            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø­Ø§Ù„Ø©');
+            setUsers((prev) =>
+                prev.map((item) =>
+                    item._id === user._id ? { ...item, isActive: result.data.isActive } : item
+                )
+            );
+            setSuccess('تم تحديث الحالة');
         } catch {
-            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
+            setError('فشل الاتصال بالخادم');
         }
     };
 
@@ -264,14 +282,14 @@ export default function SuperAdminUsersPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
+                setError(result.error || 'فشل تحديث المستخدم');
                 return;
             }
-            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
+            setSuccess('تم تحديث المستخدم');
             setEditForm(null);
             await fetchUsers({ search, role: roleFilter, hotelId: hotelFilter });
         } catch {
-            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
+            setError('فشل الاتصال بالخادم');
         } finally {
             setSavingEdit(false);
         }
@@ -282,17 +300,17 @@ export default function SuperAdminUsersPage() {
         setSuccess(null);
 
         if (!canDeleteUsers) {
-            setError('Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ù…ØªØ§Ø­ Ù„Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ ÙÙ‚Ø·');
+            setError('حذف الحسابات متاح للسوبر أدمن الرئيسي فقط');
             return;
         }
 
         if (user.role === 'super_admin') {
-            setError('Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø­Ø°Ù Ø­Ø³Ø§Ø¨ Ø§Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ');
+            setError('لا يمكن حذف حساب السوبر أدمن الرئيسي');
             return;
         }
 
         if (user._id === currentUserId) {
-            setError('Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø­Ø°Ù Ø­Ø³Ø§Ø¨Ùƒ Ø§Ù„Ø­Ø§Ù„ÙŠ');
+            setError('لا يمكنك حذف حسابك الحالي');
             return;
         }
 
@@ -317,7 +335,7 @@ export default function SuperAdminUsersPage() {
         setSuccess(null);
 
         if (deleteConfirmEmail.trim().toLowerCase() !== deleteForm.email.toLowerCase()) {
-            setError('ÙŠØ¬Ø¨ Ø¥Ø¯Ø®Ø§Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ø§Ù„ØµØ­ÙŠØ­ Ù„ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø­Ø°Ù');
+            setError('يجب إدخال البريد الإلكتروني الصحيح لتأكيد الحذف');
             return;
         }
 
@@ -329,7 +347,7 @@ export default function SuperAdminUsersPage() {
             const result = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                setError((result as { error?: string }).error || 'ÙØ´Ù„ Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨');
+                setError((result as { error?: string }).error || 'فشل حذف الحساب');
                 return;
             }
 
@@ -337,11 +355,11 @@ export default function SuperAdminUsersPage() {
             if (editForm?.userId === deleteForm.userId) {
                 setEditForm(null);
             }
-            setSuccess(`ØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨: ${deleteForm.name}`);
+            setSuccess(`تم حذف الحساب: ${deleteForm.name}`);
             setDeleteForm(null);
             setDeleteConfirmEmail('');
         } catch {
-            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
+            setError('فشل الاتصال بالخادم');
         } finally {
             setDeletingUserId(null);
         }
@@ -353,38 +371,53 @@ export default function SuperAdminUsersPage() {
         setHotelFilter('');
     };
 
-    const hotelOptions = useMemo(() => hotels.map((hotel) => ({ value: hotel._id, label: hotel.name })), [hotels]);
-    const selectedRoleIsPlatform = selectedRole === 'super_admin' || selectedRole === 'sub_super_admin';
+    const hotelOptions = useMemo(
+        () => hotels.map((hotel) => ({ value: hotel._id, label: hotel.name })),
+        [hotels]
+    );
+
+    const selectedRoleIsPlatform =
+        selectedRole === 'super_admin' || selectedRole === 'sub_super_admin';
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† ÙˆØ§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª</h1>
-                <p className="mt-1 text-white/60">Ø¥Ø¯Ø§Ø±Ø© Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…Ù†ØµØ© ÙˆØ§Ù„ÙÙ†Ø§Ø¯Ù‚ ÙˆÙÙ‚ Ù†Ø·Ø§Ù‚ Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª Ø§Ù„Ù…Ø¹ØªÙ…Ø¯ØŒ Ù…Ø¹ Ø­Ø°Ù Ø¢Ù…Ù† Ù„Ù„Ø­Ø³Ø§Ø¨Ø§Øª.</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">إدارة المستخدمين والصلاحيات</h1>
+                <p className="mt-1 text-white/60">
+                    إدارة حسابات المنصة والفنادق وفق نطاق الصلاحيات المعتمد، مع حذف آمن للحسابات.
+                </p>
             </div>
 
             {(error || success) && (
                 <div className="space-y-2">
-                    {error && <div className="p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-600 text-sm">{error}</div>}
-                    {success && <div className="p-3 bg-success-500/10 border border-success-500/20 rounded-xl text-success-500 text-sm">{success}</div>}
+                    {error && (
+                        <div className="p-3 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-600 text-sm">
+                            {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="p-3 bg-success-500/10 border border-success-500/20 rounded-xl text-success-500 text-sm">
+                            {success}
+                        </div>
+                    )}
                 </div>
             )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª</p>
+                    <p className="text-xs text-white/50">إجمالي الحسابات</p>
                     <p className="text-lg font-semibold text-primary-300">{userStats.total}</p>
                 </div>
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">Ø­Ø³Ø§Ø¨Ø§Øª Ù†Ø´Ø·Ø©</p>
+                    <p className="text-xs text-white/50">حسابات نشطة</p>
                     <p className="text-lg font-semibold text-success-500">{userStats.active}</p>
                 </div>
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">Ø­Ø³Ø§Ø¨Ø§Øª ØºÙŠØ± Ù†Ø´Ø·Ø©</p>
+                    <p className="text-xs text-white/50">حسابات غير نشطة</p>
                     <p className="text-lg font-semibold text-danger-500">{userStats.inactive}</p>
                 </div>
                 <div className="stat-card">
-                    <p className="text-xs text-white/50">Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…Ù†ØµØ©</p>
+                    <p className="text-xs text-white/50">حسابات المنصة</p>
                     <p className="text-lg font-semibold text-accent-300">{userStats.platform}</p>
                 </div>
             </div>
@@ -392,38 +425,69 @@ export default function SuperAdminUsersPage() {
             <div className="card p-5 space-y-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     <UserCog className="w-5 h-5 text-primary-300" />
-                    Ø¥Ù†Ø´Ø§Ø¡ Ù…Ø³ØªØ®Ø¯Ù…
+                    إنشاء مستخدم
                 </h2>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input {...register('name')} className="input-compact w-full" placeholder="Ø§Ù„Ø§Ø³Ù…" />
-                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" dir="ltr" />
-                    <input {...register('password')} type="password" className="input-compact w-full" placeholder="ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±" dir="ltr" />
+                    <input {...register('name')} className="input-compact w-full" placeholder="الاسم" />
+                    <input
+                        {...register('email')}
+                        type="email"
+                        className="input-compact w-full"
+                        placeholder="البريد الإلكتروني"
+                        dir="ltr"
+                    />
+                    <input
+                        {...register('password')}
+                        type="password"
+                        className="input-compact w-full"
+                        placeholder="كلمة المرور"
+                        dir="ltr"
+                    />
                     <select {...register('role')} className="input-compact w-full">
                         {createRoles.map((value) => (
-                            <option key={value} value={value}>{roleLabels[value] || value}</option>
+                            <option key={value} value={value}>
+                                {roleLabels[value] || value}
+                            </option>
                         ))}
                     </select>
+
                     <div className="md:col-span-2 relative">
                         <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                        <select {...register('hotelId')} className="input-compact w-full pr-9" disabled={selectedRoleIsPlatform}>
-                            <option value="">Ø§Ø®ØªØ± Ø§Ù„ÙÙ†Ø¯Ù‚</option>
+                        <select
+                            {...register('hotelId')}
+                            className="input-compact w-full pr-9"
+                            disabled={selectedRoleIsPlatform}
+                        >
+                            <option value="">اختر الفندق</option>
                             {hotelOptions.map((hotel) => (
-                                <option key={hotel.value} value={hotel.value}>{hotel.label}</option>
+                                <option key={hotel.value} value={hotel.value}>
+                                    {hotel.label}
+                                </option>
                             ))}
                         </select>
                     </div>
+
                     <div className="md:col-span-2 flex justify-end">
                         <button type="submit" className="btn-primary text-sm" disabled={submitting}>
-                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</>}
+                            {submitting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <Plus className="w-4 h-4" />
+                                    إنشاء المستخدم
+                                </>
+                            )}
                         </button>
                     </div>
                 </form>
 
                 {(errors.name || errors.email || errors.password || errors.role || errors.hotelId) && (
-                    <p className="text-xs text-danger-500">ÙŠØ±Ø¬Ù‰ Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø­Ù‚ÙˆÙ„ Ù‚Ø¨Ù„ Ø§Ù„Ø¥Ø±Ø³Ø§Ù„.</p>
+                    <p className="text-xs text-danger-500">يرجى مراجعة الحقول قبل الإرسال.</p>
                 )}
-            </div>`n            <div className="card p-5 space-y-4">
+            </div>
+
+            <div className="card p-5 space-y-4">
                 <div className="flex flex-col lg:flex-row gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -432,32 +496,40 @@ export default function SuperAdminUsersPage() {
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             className="input-compact w-full pr-9"
-                            placeholder="Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ"
+                            placeholder="بحث بالاسم أو البريد الإلكتروني"
                         />
                     </div>
+
                     <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
                         className="input-compact min-w-[180px]"
                     >
-                        <option value="">ÙƒÙ„ Ø§Ù„Ø£Ø¯ÙˆØ§Ø±</option>
+                        <option value="">كل الأدوار</option>
                         {Object.entries(roleLabels).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
                         ))}
                     </select>
+
                     <select
                         value={hotelFilter}
                         onChange={(e) => setHotelFilter(e.target.value)}
                         className="input-compact min-w-[180px]"
                     >
-                        <option value="">ÙƒÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚</option>
+                        <option value="">كل الفنادق</option>
                         {hotelOptions.map((hotel) => (
-                            <option key={hotel.value} value={hotel.value}>{hotel.label}</option>
+                            <option key={hotel.value} value={hotel.value}>
+                                {hotel.label}
+                            </option>
                         ))}
                     </select>
+
                     <button type="button" onClick={clearFilters} className="btn-secondary text-sm">
-                        Ù…Ø³Ø­ Ø§Ù„ÙÙ„Ø§ØªØ±
+                        مسح الفلاتر
                     </button>
+
                     <button
                         type="button"
                         onClick={() => {
@@ -467,75 +539,106 @@ export default function SuperAdminUsersPage() {
                         className="btn-secondary text-sm"
                     >
                         <RefreshCcw className="w-4 h-4" />
-                        ØªØ­Ø¯ÙŠØ«
+                        تحديث
                     </button>
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center py-8"><div className="spinner w-10 h-10" /></div>
+                    <div className="flex justify-center py-8">
+                        <div className="spinner w-10 h-10" />
+                    </div>
                 ) : users.length === 0 ? (
-                    <p className="text-white/60 text-center py-8">Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø³ØªØ®Ø¯Ù…ÙˆÙ† Ø­Ø§Ù„ÙŠÙ‹Ø§.</p>
+                    <p className="text-white/60 text-center py-8">لا يوجد مستخدمون حاليًا.</p>
                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>Ø§Ù„Ø§Ø³Ù…</th>
-                                    <th>Ø§Ù„Ø¨Ø±ÙŠØ¯</th>
-                                    <th>Ø§Ù„Ø¯ÙˆØ±</th>
-                                    <th>Ø§Ù„ÙÙ†Ø¯Ù‚</th>
-                                    <th>ØªÙ… Ø§Ù„Ø¥Ù†Ø´Ø§Ø¡ Ø¨ÙˆØ§Ø³Ø·Ø©</th>
-                                    <th>Ø§Ù„Ø­Ø§Ù„Ø©</th>
-                                    <th>Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th>
+                                    <th>الاسم</th>
+                                    <th>البريد</th>
+                                    <th>الدور</th>
+                                    <th>الفندق</th>
+                                    <th>تم الإنشاء بواسطة</th>
+                                    <th>الحالة</th>
+                                    <th>إجراءات</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.map((user) => {
                                     const isSelf = user._id === currentUserId;
                                     const isMainSuper = user.role === 'super_admin';
-                                    const deleteDisabled = !canDeleteUsers || isSelf || isMainSuper || Boolean(deletingUserId);
+                                    const deleteDisabled =
+                                        !canDeleteUsers ||
+                                        isSelf ||
+                                        isMainSuper ||
+                                        Boolean(deletingUserId);
 
                                     return (
                                         <tr key={user._id}>
                                             <td className="font-medium text-white">
                                                 <div className="flex items-center gap-2">
                                                     <span>{user.name}</span>
-                                                    {isSelf && <span className="badge-primary text-[10px]">Ø­Ø³Ø§Ø¨Ùƒ</span>}
+                                                    {isSelf && (
+                                                        <span className="badge-primary text-[10px]">حسابك</span>
+                                                    )}
                                                 </div>
                                             </td>
-                                            <td className="text-white/60" dir="ltr">{user.email}</td>
+                                            <td className="text-white/60" dir="ltr">
+                                                {user.email}
+                                            </td>
                                             <td className="text-white/70">{roleLabels[user.role] || user.role}</td>
                                             <td className="text-white/60">{user.hotel?.name || '-'}</td>
                                             <td className="text-white/60">{user.createdBy?.name || '-'}</td>
                                             <td>
                                                 {user.isActive ? (
-                                                    <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />Ù†Ø´Ø·</span>
+                                                    <span className="badge-success inline-flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3" />
+                                                        نشط
+                                                    </span>
                                                 ) : (
-                                                    <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />ØºÙŠØ± Ù†Ø´Ø·</span>
+                                                    <span className="badge-danger inline-flex items-center gap-1">
+                                                        <XCircle className="w-3 h-3" />
+                                                        غير نشط
+                                                    </span>
                                                 )}
                                             </td>
                                             <td>
                                                 <div className="flex flex-wrap gap-1">
-                                                    <button onClick={() => toggleUserStatus(user)} className="btn-secondary text-xs" disabled={isSelf && user.isActive}>
-                                                        {user.isActive ? 'ØªØ¹Ø·ÙŠÙ„' : 'ØªÙØ¹ÙŠÙ„'}
+                                                    <button
+                                                        onClick={() => toggleUserStatus(user)}
+                                                        className="btn-secondary text-xs"
+                                                        disabled={isSelf && user.isActive}
+                                                    >
+                                                        {user.isActive ? 'تعطيل' : 'تفعيل'}
                                                     </button>
-                                                    <button onClick={() => openEditUser(user)} className="btn-secondary text-xs">
+
+                                                    <button
+                                                        onClick={() => openEditUser(user)}
+                                                        className="btn-secondary text-xs"
+                                                    >
                                                         <Pencil className="w-3.5 h-3.5" />
-                                                        ØªØ¹Ø¯ÙŠÙ„
+                                                        تعديل
                                                     </button>
+
                                                     {canDeleteUsers && (
                                                         <button
                                                             onClick={() => openDeleteUser(user)}
                                                             className="btn-danger text-xs"
                                                             disabled={deleteDisabled}
-                                                            title={isSelf ? 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø­Ø°Ù Ø­Ø³Ø§Ø¨Ùƒ' : isMainSuper ? 'Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø­Ø°Ù Ø§Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ' : 'Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨'}
+                                                            title={
+                                                                isSelf
+                                                                    ? 'لا يمكنك حذف حسابك'
+                                                                    : isMainSuper
+                                                                    ? 'لا يمكن حذف السوبر أدمن الرئيسي'
+                                                                    : 'حذف الحساب'
+                                                            }
                                                         >
                                                             {deletingUserId === user._id ? (
                                                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                             ) : (
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             )}
-                                                            Ø­Ø°Ù
+                                                            حذف
                                                         </button>
                                                     )}
                                                 </div>
@@ -551,20 +654,67 @@ export default function SuperAdminUsersPage() {
 
             {editForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">ØªØ¹Ø¯ÙŠÙ„ Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</h3>
+                    <h3 className="text-base font-semibold text-white">تعديل حساب المستخدم</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input value={editForm.name} onChange={(e) => setEditForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø§Ù„Ø§Ø³Ù…" />
-                        <input value={editForm.email} onChange={(e) => setEditForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" dir="ltr" />
-                        <input value={editForm.phone} onChange={(e) => setEditForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ" dir="ltr" />
+                        <input
+                            value={editForm.name}
+                            onChange={(e) =>
+                                setEditForm((prev) =>
+                                    prev ? { ...prev, name: e.target.value } : prev
+                                )
+                            }
+                            className="input-compact w-full"
+                            placeholder="الاسم"
+                        />
+                        <input
+                            value={editForm.email}
+                            onChange={(e) =>
+                                setEditForm((prev) =>
+                                    prev ? { ...prev, email: e.target.value } : prev
+                                )
+                            }
+                            className="input-compact w-full"
+                            placeholder="البريد الإلكتروني"
+                            dir="ltr"
+                        />
+                        <input
+                            value={editForm.phone}
+                            onChange={(e) =>
+                                setEditForm((prev) =>
+                                    prev ? { ...prev, phone: e.target.value } : prev
+                                )
+                            }
+                            className="input-compact w-full"
+                            placeholder="رقم الهاتف"
+                            dir="ltr"
+                        />
                         <label className="surface-tile flex items-center justify-between text-sm">
-                            ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨
-                            <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} />
+                            تفعيل الحساب
+                            <input
+                                type="checkbox"
+                                checked={editForm.isActive}
+                                onChange={(e) =>
+                                    setEditForm((prev) =>
+                                        prev ? { ...prev, isActive: e.target.checked } : prev
+                                    )
+                                }
+                            />
                         </label>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button className="btn-secondary text-sm" onClick={() => setEditForm(null)}>Ø¥ØºÙ„Ø§Ù‚</button>
-                        <button className="btn-primary text-sm" onClick={saveUserEdit} disabled={savingEdit}>
-                            {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ø­ÙØ¸ Ø§Ù„ØªØ¹Ø¯ÙŠÙ„Ø§Øª'}
+                        <button className="btn-secondary text-sm" onClick={() => setEditForm(null)}>
+                            إغلاق
+                        </button>
+                        <button
+                            className="btn-primary text-sm"
+                            onClick={saveUserEdit}
+                            disabled={savingEdit}
+                        >
+                            {savingEdit ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                'حفظ التعديلات'
+                            )}
                         </button>
                     </div>
                 </div>
@@ -574,29 +724,46 @@ export default function SuperAdminUsersPage() {
                 <div className="card p-5 space-y-4 border border-danger-500/30">
                     <h3 className="text-base font-semibold text-white flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-danger-500" />
-                        ØªØ£ÙƒÙŠØ¯ Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨
+                        تأكيد حذف الحساب
                     </h3>
                     <p className="text-sm text-white/70">
-                        Ø³ÙŠØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ <span className="text-white font-medium">{deleteForm.name}</span> Ù†Ù‡Ø§Ø¦ÙŠÙ‹Ø§.
-                        Ø§ÙƒØªØ¨ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¹Ù…Ù„ÙŠØ©:
+                        سيتم حذف الحساب <span className="text-white font-medium">{deleteForm.name}</span>{' '}
+                        نهائيًا. اكتب البريد الإلكتروني لتأكيد العملية:
                     </p>
                     <div className="surface-tile">
-                        <p className="text-xs text-white/50 mb-1">Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ù„Ù„ØªØ£ÙƒÙŠØ¯</p>
-                        <p className="text-sm text-white font-medium" dir="ltr">{deleteForm.email}</p>
+                        <p className="text-xs text-white/50 mb-1">البريد المطلوب للتأكيد</p>
+                        <p className="text-sm text-white font-medium" dir="ltr">
+                            {deleteForm.email}
+                        </p>
                     </div>
                     <input
                         value={deleteConfirmEmail}
                         onChange={(e) => setDeleteConfirmEmail(e.target.value)}
                         className="input-compact w-full"
-                        placeholder="Ø£Ø¯Ø®Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„Ù„ØªØ£ÙƒÙŠØ¯"
+                        placeholder="أدخل البريد الإلكتروني للتأكيد"
                         dir="ltr"
                     />
                     <div className="flex justify-end gap-2">
-                        <button className="btn-secondary text-sm" onClick={closeDeleteUser} disabled={Boolean(deletingUserId)}>
-                            Ø¥Ù„ØºØ§Ø¡
+                        <button
+                            className="btn-secondary text-sm"
+                            onClick={closeDeleteUser}
+                            disabled={Boolean(deletingUserId)}
+                        >
+                            إلغاء
                         </button>
-                        <button className="btn-danger text-sm" onClick={confirmDeleteUser} disabled={Boolean(deletingUserId)}>
-                            {deletingUserId ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" />ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø­Ø°Ù</>}
+                        <button
+                            className="btn-danger text-sm"
+                            onClick={confirmDeleteUser}
+                            disabled={Boolean(deletingUserId)}
+                        >
+                            {deletingUserId ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <Trash2 className="w-4 h-4" />
+                                    تأكيد الحذف
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -605,10 +772,9 @@ export default function SuperAdminUsersPage() {
             {!canDeleteUsers && (
                 <div className="surface-tile text-xs text-white/60 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ù…ØªØ§Ø­ ÙÙ‚Ø· Ù„Ù„Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ.
+                    حذف الحسابات متاح فقط للسوبر أدمن الرئيسي.
                 </div>
             )}
         </div>
     );
 }
-
