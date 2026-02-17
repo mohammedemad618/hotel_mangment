@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
-import { User, Hotel } from '@/core/db/models';
+import { User, Hotel, Room, Guest, Booking, AuditLog } from '@/core/db/models';
 import { withSuperAdmin, withMainSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import mongoose from 'mongoose';
 import { writeAuditLog } from '@/core/audit/logger';
@@ -260,6 +260,83 @@ async function deleteUser(
             return NextResponse.json({ error: 'Main super admin account cannot be deleted' }, { status: 400 });
         }
 
+        let deletedLinkedHotelAccounts = 0;
+        let linkedHotelsCount = 0;
+        const cascade = {
+            deletedHotels: 0,
+            deletedHotelUsers: 0,
+            deletedGuests: 0,
+            deletedRooms: 0,
+            deletedBookings: 0,
+            deletedAuditLogs: 0,
+        };
+
+        if (target.role === 'sub_super_admin') {
+            const targetId = new mongoose.Types.ObjectId(id);
+            const managedHotels = await Hotel.find({ createdBy: targetId }).select('_id').lean();
+            const managedHotelIds = managedHotels.map((hotel) => hotel._id);
+            linkedHotelsCount = managedHotelIds.length;
+
+            const linkedUsers = await User.find({
+                role: { $nin: ['super_admin', 'sub_super_admin'] },
+                $or: [
+                    { createdBy: targetId },
+                    ...(managedHotelIds.length > 0 ? [{ hotelId: { $in: managedHotelIds } }] : []),
+                ],
+            })
+                .select('_id')
+                .lean();
+            const linkedUserIds = linkedUsers.map((user) => user._id);
+
+            if (managedHotelIds.length > 0) {
+                const [bookingDeleteResult, guestDeleteResult, roomDeleteResult, hotelDeleteResult] =
+                    await Promise.all([
+                        Booking.deleteMany({ hotelId: { $in: managedHotelIds } }),
+                        Guest.deleteMany({ hotelId: { $in: managedHotelIds } }),
+                        Room.deleteMany({ hotelId: { $in: managedHotelIds } }),
+                        Hotel.deleteMany({ _id: { $in: managedHotelIds } }),
+                    ]);
+
+                cascade.deletedBookings = bookingDeleteResult.deletedCount || 0;
+                cascade.deletedGuests = guestDeleteResult.deletedCount || 0;
+                cascade.deletedRooms = roomDeleteResult.deletedCount || 0;
+                cascade.deletedHotels = hotelDeleteResult.deletedCount || 0;
+            }
+
+            if (linkedUserIds.length > 0) {
+                const userDeleteResult = await User.deleteMany({ _id: { $in: linkedUserIds } });
+                cascade.deletedHotelUsers = userDeleteResult.deletedCount || 0;
+            }
+
+            const auditFilters: Array<Record<string, unknown>> = [
+                { actorId: targetId },
+                { targetUserId: targetId },
+                { entityType: 'user', entityId: targetId },
+            ];
+
+            if (linkedUserIds.length > 0) {
+                auditFilters.push(
+                    { actorId: { $in: linkedUserIds } },
+                    { targetUserId: { $in: linkedUserIds } },
+                    { entityType: 'user', entityId: { $in: linkedUserIds } }
+                );
+            }
+
+            if (managedHotelIds.length > 0) {
+                auditFilters.push(
+                    { targetHotelId: { $in: managedHotelIds } },
+                    { entityType: 'hotel', entityId: { $in: managedHotelIds } },
+                    { entityType: 'subscription', targetHotelId: { $in: managedHotelIds } },
+                    { entityType: 'verification', targetHotelId: { $in: managedHotelIds } }
+                );
+            }
+
+            const auditDeleteResult = await AuditLog.deleteMany({ $or: auditFilters });
+            cascade.deletedAuditLogs = auditDeleteResult.deletedCount || 0;
+
+            deletedLinkedHotelAccounts = cascade.deletedHotelUsers;
+        }
+
         await User.findByIdAndDelete(id);
 
         await writeAuditLog({
@@ -273,10 +350,21 @@ async function deleteUser(
             metadata: {
                 deletedRole: target.role,
                 deletedEmail: target.email,
+                deletedLinkedHotelAccounts,
+                linkedHotelsCount,
+                cascade,
             },
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            deletedRole: target.role,
+            cascade: {
+                deletedLinkedHotelAccounts,
+                linkedHotelsCount,
+                ...cascade,
+            },
+        });
     } catch (error) {
         console.error('Delete user error:', error);
         return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
