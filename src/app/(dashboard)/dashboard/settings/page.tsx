@@ -9,6 +9,7 @@ import {
     Palette,
     Bell,
     Shield,
+    CalendarClock,
     Save,
     Loader2,
 } from 'lucide-react';
@@ -41,11 +42,25 @@ export default function SettingsPage() {
             cancelledBooking: true,
             paymentReceived: true,
             dailyReport: true,
+            subscriptionExpiry: true,
         },
     }), []);
 
     const [settings, setSettings] = useState(defaultSettings);
     const [initialSettings, setInitialSettings] = useState(defaultSettings);
+    const [subscriptionInfo, setSubscriptionInfo] = useState<{
+        plan?: string;
+        status?: string;
+        endDate?: string | null;
+        paymentDate?: string | null;
+        renewalRequest?: {
+            isPending?: boolean;
+            requestedAt?: string | null;
+            note?: string;
+        } | null;
+    } | null>(null);
+    const [renewalNote, setRenewalNote] = useState('');
+    const [requestingRenewal, setRequestingRenewal] = useState(false);
     const lang = normalizeLanguage(settings.language);
 
     const toLayoutSettings = useCallback((data: typeof defaultSettings): HotelSettings => ({
@@ -79,6 +94,14 @@ export default function SettingsPage() {
             },
         };
     }, [defaultSettings]);
+
+    const normalizeSubscription = useCallback((hotel?: any) => ({
+        plan: hotel?.subscription?.plan || 'free',
+        status: hotel?.subscription?.status || 'active',
+        endDate: hotel?.subscription?.endDate || null,
+        paymentDate: hotel?.subscription?.paymentDate || null,
+        renewalRequest: hotel?.subscription?.renewalRequest || null,
+    }), []);
 
     const handleLogoChange = (file: File | null) => {
         if (!file) return;
@@ -165,8 +188,11 @@ export default function SettingsPage() {
             }
 
             const normalized = normalizeSettings(data.user?.hotel);
+            const normalizedSubscription = normalizeSubscription(data.user?.hotel);
             setSettings(normalized);
             setInitialSettings(normalized);
+            setSubscriptionInfo(normalizedSubscription);
+            setRenewalNote(normalizedSubscription?.renewalRequest?.note || '');
             setLayoutSettings(toLayoutSettings(normalized));
             setHotelProfile({
                 name: data.user?.hotel?.name,
@@ -180,11 +206,49 @@ export default function SettingsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [lang, normalizeSettings, setLayoutSettings, setHotelProfile, toLayoutSettings]);
+    }, [lang, normalizeSettings, normalizeSubscription, setLayoutSettings, setHotelProfile, toLayoutSettings]);
 
     useEffect(() => {
         loadSettings();
     }, [loadSettings]);
+
+    const formatDate = (value?: string | null) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+    };
+
+    const handleRenewalRequest = async () => {
+        setError(null);
+        setSuccess(null);
+        setRequestingRenewal(true);
+        try {
+            const response = await fetchWithRefresh('/api/subscription/renewal-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: renewalNote.trim() }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setError(payload.error || t(lang, 'تعذر إرسال طلب التجديد', 'Failed to send renewal request'));
+                return;
+            }
+
+            const nextSubscription = normalizeSubscription(payload.data?.hotel);
+            setSubscriptionInfo(nextSubscription);
+            setRenewalNote(nextSubscription?.renewalRequest?.note || renewalNote.trim());
+            setSuccess(t(lang, 'تم إرسال طلب التجديد بنجاح', 'Renewal request has been sent successfully'));
+        } catch {
+            setError(t(lang, 'فشل الاتصال بالخادم', 'Network error while contacting the server'));
+        } finally {
+            setRequestingRenewal(false);
+        }
+    };
 
     const hasChanges = useMemo(
         () => JSON.stringify(settings) !== JSON.stringify(initialSettings),
@@ -197,6 +261,7 @@ export default function SettingsPage() {
         { id: 'operations', label: { ar: 'العمليات', en: 'Operations' }, icon: Clock },
         { id: 'appearance', label: { ar: 'المظهر', en: 'Appearance' }, icon: Palette },
         { id: 'notifications', label: { ar: 'الإشعارات', en: 'Notifications' }, icon: Bell },
+        { id: 'subscription', label: { ar: 'الاشتراك', en: 'Subscription' }, icon: CalendarClock },
         { id: 'security', label: { ar: 'الأمان', en: 'Security' }, icon: Shield },
     ];
 
@@ -472,6 +537,7 @@ export default function SettingsPage() {
                                                 { key: 'cancelledBooking', label: { ar: 'إلغاء حجز', en: 'Booking cancelled' } },
                                                 { key: 'paymentReceived', label: { ar: 'استلام دفعة', en: 'Payment received' } },
                                                 { key: 'dailyReport', label: { ar: 'التقرير اليومي', en: 'Daily report' } },
+                                                { key: 'subscriptionExpiry', label: { ar: 'تنبيهات انتهاء الاشتراك', en: 'Subscription expiry alerts' } },
                                             ].map((item) => (
                                                 <label
                                                     key={item.key}
@@ -525,6 +591,76 @@ export default function SettingsPage() {
                                                     </span>
                                                 </button>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+
+                                {/* Subscription */}
+                                {activeTab === 'subscription' && (
+                                    <div className="space-y-6">
+                                        <h2 className="text-lg font-semibold text-white mb-6">
+                                            {t(lang, 'إدارة الاشتراك', 'Subscription management')}
+                                        </h2>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="surface-tile">
+                                                <p className="text-xs text-white/50">{t(lang, 'الباقة الحالية', 'Current plan')}</p>
+                                                <p className="text-sm text-white mt-1">{subscriptionInfo?.plan || '-'}</p>
+                                            </div>
+                                            <div className="surface-tile">
+                                                <p className="text-xs text-white/50">{t(lang, 'حالة الاشتراك', 'Subscription status')}</p>
+                                                <p className="text-sm text-white mt-1">{subscriptionInfo?.status || '-'}</p>
+                                            </div>
+                                            <div className="surface-tile">
+                                                <p className="text-xs text-white/50">{t(lang, 'تاريخ الانتهاء', 'End date')}</p>
+                                                <p className="text-sm text-white mt-1">{formatDate(subscriptionInfo?.endDate)}</p>
+                                            </div>
+                                            <div className="surface-tile">
+                                                <p className="text-xs text-white/50">{t(lang, 'آخر دفعة', 'Last payment')}</p>
+                                                <p className="text-sm text-white mt-1">{formatDate(subscriptionInfo?.paymentDate)}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="block text-sm font-medium text-white/70">
+                                                {t(lang, 'ملاحظة طلب التجديد (اختياري)', 'Renewal request note (optional)')}
+                                            </label>
+                                            <textarea
+                                                value={renewalNote}
+                                                onChange={(event) => setRenewalNote(event.target.value)}
+                                                className="input min-h-[110px]"
+                                                maxLength={500}
+                                                placeholder={t(
+                                                    lang,
+                                                    'اكتب ملاحظة لفريق إدارة المنصة (مثال: تم التحويل البنكي وجارٍ إرسال الإيصال).',
+                                                    'Add a note for platform management (e.g. transfer completed, receipt will be shared).'
+                                                )}
+                                            />
+                                            {subscriptionInfo?.renewalRequest?.isPending && (
+                                                <p className="text-xs text-warning-500">
+                                                    {t(
+                                                        lang,
+                                                        'يوجد طلب تجديد قائم منذ ' + formatDate(subscriptionInfo?.renewalRequest?.requestedAt || null) + '.',
+                                                        'A renewal request is already pending since ' + formatDate(subscriptionInfo?.renewalRequest?.requestedAt || null) + '.'
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={handleRenewalRequest}
+                                                disabled={requestingRenewal || Boolean(subscriptionInfo?.renewalRequest?.isPending)}
+                                                className="btn-primary"
+                                            >
+                                                {requestingRenewal ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <span>{t(lang, 'طلب تجديد الاشتراك', 'Request subscription renewal')}</span>
+                                                )}
+                                            </button>
                                         </div>
                                     </div>
                                 )}

@@ -8,6 +8,7 @@ import { computeRenewalEndDate, isSubscriptionExpired } from '@/core/subscriptio
 
 const PLAN_VALUES = new Set(['free', 'basic', 'premium', 'enterprise']);
 const STATUS_VALUES = new Set(['active', 'suspended', 'cancelled']);
+const MAX_NOTIFICATION_LOG_ITEMS = 50;
 
 function hasOwn(obj: Record<string, unknown>, key: string): boolean {
     return Object.prototype.hasOwnProperty.call(obj, key);
@@ -19,6 +20,10 @@ function parseDateInput(value: unknown): Date | null {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) throw new Error('INVALID_DATE_VALUE');
     return parsed;
+}
+
+function buildRenewedMessage(nextEndDate: Date): string {
+    return `Subscription renewed successfully. New end date: ${nextEndDate.toISOString().slice(0, 10)}.`;
 }
 
 function getPathValue(source: Record<string, unknown>, path: string): unknown {
@@ -116,6 +121,10 @@ async function updateHotel(
                 updates['subscription.paymentDate'] = paymentDate;
                 updates['subscription.endDate'] = nextEndDate;
                 updates['subscription.status'] = 'active';
+                updates['subscription.renewalRequest.isPending'] = false;
+                updates['subscription.renewalRequest.requestedAt'] = null;
+                updates['subscription.renewalRequest.note'] = '';
+                updates['subscription.renewalRequest.requestedBy'] = null;
                 updates.isActive = true;
                 renewedSubscription = true;
             } else {
@@ -183,7 +192,28 @@ async function updateHotel(
             return NextResponse.json({ error: 'No valid update fields provided' }, { status: 400 });
         }
 
-        const hotel = await Hotel.findByIdAndUpdate(id, { $set: updates }, { new: true })
+        const updatePayload: Record<string, unknown> = { $set: updates };
+        if (renewedSubscription) {
+            const endDate =
+                updates['subscription.endDate'] instanceof Date
+                    ? updates['subscription.endDate']
+                    : now;
+
+            updatePayload.$push = {
+                notificationsLog: {
+                    $each: [
+                        {
+                            type: 'subscription_renewed',
+                            message: buildRenewedMessage(endDate),
+                            createdAt: now,
+                        },
+                    ],
+                    $slice: -MAX_NOTIFICATION_LOG_ITEMS,
+                },
+            };
+        }
+
+        const hotel = await Hotel.findByIdAndUpdate(id, updatePayload, { new: true })
             .select('name email phone slug address subscription verification isActive createdBy createdAt updatedAt')
             .populate('createdBy', 'name email role')
             .lean();

@@ -36,6 +36,7 @@ export interface HotelSettings {
         cancelledBooking: boolean;
         paymentReceived: boolean;
         dailyReport: boolean;
+        subscriptionExpiry?: boolean;
     };
 }
 
@@ -163,6 +164,7 @@ export default function DashboardLayout({
                         cancelledBooking: hotelSettings.notifications?.cancelledBooking ?? true,
                         paymentReceived: hotelSettings.notifications?.paymentReceived ?? true,
                         dailyReport: hotelSettings.notifications?.dailyReport ?? true,
+                        subscriptionExpiry: hotelSettings.notifications?.subscriptionExpiry ?? true,
                     },
                 });
                 setNotifications(hotelNotifications);

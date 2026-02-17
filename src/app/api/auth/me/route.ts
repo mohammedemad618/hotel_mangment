@@ -4,6 +4,7 @@ import { Hotel, User } from '@/core/db/models';
 import { withAuth, withPermission, AuthContext } from '@/core/middleware/auth';
 import { PERMISSIONS } from '@/core/auth';
 import { hotelSettingsSchema } from '@/lib/validations';
+import { runSubscriptionNotificationSweep } from '@/core/subscription/notifications';
 
 async function handler(
     request: NextRequest,
@@ -13,9 +14,17 @@ async function handler(
     try {
         await connectDB();
 
+        if (auth.hotelId && auth.role !== 'super_admin' && auth.role !== 'sub_super_admin') {
+            try {
+                await runSubscriptionNotificationSweep({ _id: auth.hotelId }, new Date());
+            } catch (notificationError) {
+                console.error('Subscription notification sweep failed for current hotel:', notificationError);
+            }
+        }
+
         const user = await User.findById(auth.userId)
             .select('-passwordHash -mfaSecret -refreshTokenHash')
-            .populate('hotel', 'name slug email phone address settings notificationsLog logo');
+            .populate('hotel', 'name slug email phone address settings subscription notificationsLog logo');
 
         if (!user) {
             return NextResponse.json(
@@ -122,6 +131,7 @@ async function updateSettings(
                             cancelledBooking: settings.notifications?.cancelledBooking ?? true,
                             paymentReceived: settings.notifications?.paymentReceived ?? true,
                             dailyReport: settings.notifications?.dailyReport ?? true,
+                            subscriptionExpiry: settings.notifications?.subscriptionExpiry ?? true,
                         },
                     },
                 },

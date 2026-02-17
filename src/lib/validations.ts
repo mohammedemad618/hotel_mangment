@@ -222,8 +222,17 @@ export const hotelSettingsSchema = z.object({
             cancelledBooking: z.boolean(),
             paymentReceived: z.boolean(),
             dailyReport: z.boolean(),
+            subscriptionExpiry: z.boolean().optional(),
         }).optional(),
     }),
+});
+
+export const renewalRequestSchema = z.object({
+    note: z
+        .string()
+        .max(500, 'ملاحظة الطلب لا يمكن أن تتجاوز 500 حرف')
+        .optional()
+        .or(z.literal('')),
 });
 
 // ========================================
@@ -242,4 +251,5 @@ export type UpdateBookingInput = z.infer<typeof updateBookingSchema>;
 export type CreateGuestInput = z.infer<typeof createGuestSchema>;
 export type UpdateGuestInput = z.infer<typeof updateGuestSchema>;
 export type HotelSettingsInput = z.infer<typeof hotelSettingsSchema>;
+export type RenewalRequestInput = z.infer<typeof renewalRequestSchema>;
 

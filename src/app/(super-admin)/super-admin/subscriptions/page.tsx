@@ -32,6 +32,11 @@ interface SubscriptionItem {
     isWarningWindow: boolean;
     isInGracePeriod: boolean;
     isBeyondGracePeriod: boolean;
+    renewalRequest: {
+        isPending: boolean;
+        requestedAt: string | null;
+        note: string;
+    };
     owner: {
         id: string | null;
         name: string;
@@ -48,6 +53,7 @@ interface Summary {
     grace: number;
     suspended: number;
     cancelled: number;
+    pendingRenewals: number;
     expiringIn3Days: number;
     graceDays: number;
     warningDays: number;
@@ -242,13 +248,14 @@ export default function SuperAdminSubscriptionsPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
                 <div className="stat-card"><p className="text-xs text-white/50">الإجمالي</p><p className="text-lg font-semibold text-primary-300">{summary?.total || 0}</p></div>
                 <div className="stat-card"><p className="text-xs text-white/50">سليم</p><p className="text-lg font-semibold text-success-500">{summary?.healthy || 0}</p></div>
                 <div className="stat-card"><p className="text-xs text-white/50">تنبيه 3 أيام</p><p className="text-lg font-semibold text-warning-500">{summary?.warning || 0}</p></div>
                 <div className="stat-card"><p className="text-xs text-white/50">مهلة سماح</p><p className="text-lg font-semibold text-warning-500">{summary?.grace || 0}</p></div>
                 <div className="stat-card"><p className="text-xs text-white/50">متوقف</p><p className="text-lg font-semibold text-danger-500">{summary?.suspended || 0}</p></div>
                 <div className="stat-card"><p className="text-xs text-white/50">ملغي</p><p className="text-lg font-semibold text-danger-500">{summary?.cancelled || 0}</p></div>
+                <div className="stat-card"><p className="text-xs text-white/50">طلبات التجديد</p><p className="text-lg font-semibold text-accent-300">{summary?.pendingRenewals || 0}</p></div>
             </div>
 
             <div className="card p-5 space-y-4">
@@ -324,6 +331,7 @@ export default function SuperAdminSubscriptionsPage() {
                                         <th>تاريخ الانتهاء</th>
                                         <th>مهلة السماح</th>
                                         <th>المؤشر الزمني</th>
+                                        <th>طلبات التجديد</th>
                                         <th>مدير الفندق</th>
                                     </tr>
                                 </thead>
@@ -364,6 +372,23 @@ export default function SuperAdminSubscriptionsPage() {
                                                     )}
                                                     {item.isBeyondGracePeriod && (
                                                         <p className="text-xs text-danger-500 mt-1">متجاوز للمهلة ويتطلب سداد وتجديد</p>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {item.renewalRequest?.isPending ? (
+                                                        <>
+                                                            <span className="badge-primary">طلب قائم</span>
+                                                            <p className="text-xs text-white/50 mt-1">
+                                                                {formatDate(item.renewalRequest.requestedAt)}
+                                                            </p>
+                                                            {item.renewalRequest.note && (
+                                                                <p className="text-xs text-white/60 mt-1 line-clamp-2">
+                                                                    {item.renewalRequest.note}
+                                                                </p>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-xs text-white/50">لا يوجد</span>
                                                     )}
                                                 </td>
                                                 <td>

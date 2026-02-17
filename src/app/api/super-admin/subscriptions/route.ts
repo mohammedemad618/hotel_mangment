@@ -37,6 +37,11 @@ interface SubscriptionItem {
     isWarningWindow: boolean;
     isInGracePeriod: boolean;
     isBeyondGracePeriod: boolean;
+    renewalRequest: {
+        isPending: boolean;
+        requestedAt: string | null;
+        note: string;
+    };
     owner: {
         id: string | null;
         name: string;
@@ -183,6 +188,7 @@ async function listSubscriptions(
                 SUBSCRIPTION_GRACE_DAYS
             );
             const owner = ownerByHotel.get(hotel._id.toString());
+            const renewalRequest = hotel.subscription?.renewalRequest;
 
             return {
                 hotelId: hotel._id.toString(),
@@ -202,6 +208,13 @@ async function listSubscriptions(
                 isWarningWindow: timeline.isWarningWindow,
                 isInGracePeriod: timeline.isInGracePeriod,
                 isBeyondGracePeriod: timeline.isBeyondGracePeriod,
+                renewalRequest: {
+                    isPending: Boolean(renewalRequest?.isPending),
+                    requestedAt: renewalRequest?.requestedAt
+                        ? new Date(renewalRequest.requestedAt).toISOString()
+                        : null,
+                    note: renewalRequest?.note || '',
+                },
                 owner: {
                     id: owner?._id?.toString() || null,
                     name: owner?.name || '-',
@@ -225,6 +238,7 @@ async function listSubscriptions(
             grace: allItems.filter((item) => matchState(item, 'grace')).length,
             suspended: allItems.filter((item) => matchState(item, 'suspended')).length,
             cancelled: allItems.filter((item) => matchState(item, 'cancelled')).length,
+            pendingRenewals: allItems.filter((item) => item.renewalRequest.isPending).length,
             expiringIn3Days: allItems.filter((item) => item.daysRemaining !== null && item.daysRemaining >= 0 && item.daysRemaining <= SUBSCRIPTION_WARNING_DAYS).length,
             graceDays: SUBSCRIPTION_GRACE_DAYS,
             warningDays: SUBSCRIPTION_WARNING_DAYS,

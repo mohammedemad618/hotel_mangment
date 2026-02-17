@@ -16,6 +16,11 @@ interface HotelSubscriptionSnapshot {
         status?: string | null;
         endDate?: Date | string | null;
     } | null;
+    settings?: {
+        notifications?: {
+            subscriptionExpiry?: boolean;
+        } | null;
+    } | null;
 }
 
 export interface SubscriptionNotificationSweepResult {
@@ -83,7 +88,7 @@ export async function runSubscriptionNotificationSweep(
         'subscription.endDate': { $ne: null },
         'subscription.status': { $nin: ['cancelled'] },
     })
-        .select('_id name subscription.status subscription.endDate')
+        .select('_id name subscription.status subscription.endDate settings.notifications.subscriptionExpiry')
         .lean<HotelSubscriptionSnapshot[]>();
 
     const counters = {
@@ -93,6 +98,10 @@ export async function runSubscriptionNotificationSweep(
 
     const writes: Promise<void>[] = [];
     for (const hotel of hotels) {
+        const subscriptionExpiryEnabled =
+            hotel.settings?.notifications?.subscriptionExpiry ?? true;
+        if (!subscriptionExpiryEnabled) continue;
+
         if (hotel.subscription?.status === 'suspended') continue;
 
         const timeline = getSubscriptionTimeline(

@@ -23,6 +23,12 @@ export interface IHotel extends Document {
         startDate: Date;
         paymentDate: Date | null;
         endDate: Date | null;
+        renewalRequest?: {
+            isPending: boolean;
+            requestedAt: Date | null;
+            note: string;
+            requestedBy: Types.ObjectId | null;
+        };
     };
     verification: {
         isVerified: boolean;
@@ -42,6 +48,7 @@ export interface IHotel extends Document {
             cancelledBooking: boolean;
             paymentReceived: boolean;
             dailyReport: boolean;
+            subscriptionExpiry?: boolean;
         };
     };
     notificationsLog?: Array<{
@@ -108,6 +115,12 @@ const HotelSchema = new Schema<IHotel>(
             startDate: { type: Date, default: Date.now },
             paymentDate: { type: Date, default: Date.now },
             endDate: { type: Date, default: null },
+            renewalRequest: {
+                isPending: { type: Boolean, default: false },
+                requestedAt: { type: Date, default: null },
+                note: { type: String, default: '' },
+                requestedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+            },
         },
         verification: {
             isVerified: { type: Boolean, default: false },
@@ -127,6 +140,7 @@ const HotelSchema = new Schema<IHotel>(
                 cancelledBooking: { type: Boolean, default: true },
                 paymentReceived: { type: Boolean, default: true },
                 dailyReport: { type: Boolean, default: true },
+                subscriptionExpiry: { type: Boolean, default: true },
             },
         },
         notificationsLog: [

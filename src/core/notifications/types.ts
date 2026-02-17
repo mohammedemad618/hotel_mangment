@@ -5,10 +5,15 @@ export const HOTEL_NOTIFICATION_TYPES = [
     'daily_report',
     'subscription_warning',
     'subscription_grace_final',
+    'subscription_renewal_requested',
+    'subscription_renewed',
 ] as const;
 
 export type HotelNotificationType = (typeof HOTEL_NOTIFICATION_TYPES)[number];
 export type SubscriptionHotelNotificationType = Extract<
     HotelNotificationType,
-    'subscription_warning' | 'subscription_grace_final'
+    | 'subscription_warning'
+    | 'subscription_grace_final'
+    | 'subscription_renewal_requested'
+    | 'subscription_renewed'
 >;
