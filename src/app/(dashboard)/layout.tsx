@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
+import type { HotelNotificationType } from '@/core/notifications/types';
 
 export interface HotelSettings {
     currency: string;
@@ -52,7 +53,7 @@ export interface HotelProfile {
 }
 
 export interface HotelNotification {
-    type: 'booking_new' | 'booking_cancelled' | 'payment_received' | 'daily_report';
+    type: HotelNotificationType;
     message: string;
     createdAt: string;
 }

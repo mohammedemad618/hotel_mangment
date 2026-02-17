@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken, extractTokenFromRequest } from '../auth/jwt';
+import { isPinConfigured } from '../auth/pin';
 import { hasPermission, Permission, getPermissionsForRole } from '../auth/roles';
 import { UserRole, User, Hotel } from '../db/models';
 import { runWithTenant } from '../db/tenantMiddleware';
@@ -89,7 +90,7 @@ export function withAuth(handler: AuthenticatedHandler) {
         await connectDB();
 
         const user = await User.findById(payload.sub)
-            .select('isActive role hotelId permissions verification')
+            .select('isActive role hotelId permissions verification mfaEnabled +mfaSecret')
             .lean();
 
         if (!user || !user.isActive) {
@@ -103,6 +104,19 @@ export function withAuth(handler: AuthenticatedHandler) {
         if (!isSubSuperVerified) {
             return NextResponse.json(
                 { error: 'Sub super admin account is pending verification' },
+                { status: 403 }
+            );
+        }
+
+        if (
+            isPlatformAdminRole(user.role as UserRole) &&
+            !isPinConfigured({
+                mfaEnabled: Boolean((user as any).mfaEnabled),
+                mfaSecret: (user as any).mfaSecret || null,
+            })
+        ) {
+            return NextResponse.json(
+                { error: 'PIN verification is required for platform admin accounts' },
                 { status: 403 }
             );
         }

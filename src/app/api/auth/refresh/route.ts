@@ -11,6 +11,7 @@ import {
     setAuthCookies,
     verifyRefreshToken,
 } from '@/core/auth';
+import { isPinConfigured } from '@/core/auth/pin';
 import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
 import { isSubscriptionExpired } from '@/core/subscription/policy';
 
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 });
         }
 
-        const user = await User.findById(payload.sub).select('+refreshTokenHash');
+        const user = await User.findById(payload.sub).select('+refreshTokenHash +mfaSecret');
         if (!user || !user.isActive) {
             await clearAuthCookies();
             return NextResponse.json({ error: 'User not found or inactive' }, { status: 401 });
@@ -60,6 +61,20 @@ export async function POST(request: NextRequest) {
             await clearAuthCookies();
             return NextResponse.json(
                 { error: 'Account is pending main super admin verification' },
+                { status: 403 }
+            );
+        }
+
+        if (
+            isPlatformAdminRole(user.role) &&
+            !isPinConfigured({
+                mfaEnabled: Boolean(user.mfaEnabled),
+                mfaSecret: (user as any).mfaSecret || null,
+            })
+        ) {
+            await clearAuthCookies();
+            return NextResponse.json(
+                { error: 'PIN verification is required for platform admin accounts' },
                 { status: 403 }
             );
         }

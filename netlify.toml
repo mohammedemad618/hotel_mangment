@@ -6,5 +6,12 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--include=dev"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."subscription-maintenance"]
+  schedule = "0 3 * * *"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"

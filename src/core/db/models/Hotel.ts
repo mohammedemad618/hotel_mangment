@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
+import { HOTEL_NOTIFICATION_TYPES, type HotelNotificationType } from '@/core/notifications/types';
 
 // ========================================
 // Hotel (Tenant) Model
@@ -44,7 +45,7 @@ export interface IHotel extends Document {
         };
     };
     notificationsLog?: Array<{
-        type: 'booking_new' | 'booking_cancelled' | 'payment_received' | 'daily_report';
+        type: HotelNotificationType;
         message: string;
         createdAt: Date;
     }>;
@@ -132,7 +133,7 @@ const HotelSchema = new Schema<IHotel>(
             {
                 type: {
                     type: String,
-                    enum: ['booking_new', 'booking_cancelled', 'payment_received', 'daily_report'],
+                    enum: [...HOTEL_NOTIFICATION_TYPES],
                 },
                 message: { type: String, required: true },
                 createdAt: { type: Date, default: Date.now },

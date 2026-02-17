@@ -25,6 +25,12 @@ export interface TokenPayload extends JWTPayload {
     type: 'access' | 'refresh';
 }
 
+export interface PinChallengePayload extends JWTPayload {
+    sub: string; // userId
+    role: string;
+    type: 'pin_challenge';
+}
+
 // ========================================
 // Token Generation
 // ========================================
@@ -49,6 +55,16 @@ export async function generateRefreshToken(userId: string): Promise<string> {
     return token;
 }
 
+export async function generatePinChallengeToken(userId: string, role: string): Promise<string> {
+    const token = await new SignJWT({ sub: userId, role, type: 'pin_challenge' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('10m')
+        .sign(JWT_SECRET);
+
+    return token;
+}
+
 export async function generateTokenPair(
     userId: string,
     hotelId: string | null,
@@ -67,10 +83,10 @@ export async function generateTokenPair(
 // Token Verification
 // ========================================
 
-export async function verifyToken(token: string): Promise<TokenPayload | null> {
+export async function verifyToken(token: string): Promise<JWTPayload | null> {
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
-        return payload as TokenPayload;
+        return payload;
     } catch (error) {
         return null;
     }
@@ -81,7 +97,7 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload | n
     if (!payload || payload.type !== 'access') {
         return null;
     }
-    return payload;
+    return payload as TokenPayload;
 }
 
 export async function verifyRefreshToken(token: string): Promise<TokenPayload | null> {
@@ -89,7 +105,15 @@ export async function verifyRefreshToken(token: string): Promise<TokenPayload | 
     if (!payload || payload.type !== 'refresh') {
         return null;
     }
-    return payload;
+    return payload as TokenPayload;
+}
+
+export async function verifyPinChallengeToken(token: string): Promise<PinChallengePayload | null> {
+    const payload = await verifyToken(token);
+    if (!payload || payload.type !== 'pin_challenge') {
+        return null;
+    }
+    return payload as PinChallengePayload;
 }
 
 // ========================================
@@ -134,12 +158,28 @@ export async function setAuthCookies(
         ...COOKIE_OPTIONS,
         maxAge: 7 * 24 * 60 * 60, // 7 days
     });
+
+    cookieStore.delete('pin_challenge');
+}
+
+export async function setPinChallengeCookie(token: string): Promise<void> {
+    const cookieStore = await cookies();
+    cookieStore.set('pin_challenge', token, {
+        ...COOKIE_OPTIONS,
+        maxAge: 10 * 60, // 10 minutes
+    });
 }
 
 export async function clearAuthCookies(): Promise<void> {
     const cookieStore = await cookies();
     cookieStore.delete('access_token');
     cookieStore.delete('refresh_token');
+    cookieStore.delete('pin_challenge');
+}
+
+export async function clearPinChallengeCookie(): Promise<void> {
+    const cookieStore = await cookies();
+    cookieStore.delete('pin_challenge');
 }
 
 export async function getTokensFromCookies(): Promise<{
@@ -151,6 +191,11 @@ export async function getTokensFromCookies(): Promise<{
         accessToken: cookieStore.get('access_token')?.value || null,
         refreshToken: cookieStore.get('refresh_token')?.value || null,
     };
+}
+
+export async function getPinChallengeFromCookies(): Promise<string | null> {
+    const cookieStore = await cookies();
+    return cookieStore.get('pin_challenge')?.value || null;
 }
 
 // ========================================

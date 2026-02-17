@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
     AlertTriangle,
     Building2,
+    CalendarClock,
     Plus,
     Search,
     Loader2,
@@ -77,7 +78,12 @@ interface SubscriptionAlert {
     subscriptionStatus: string;
     isActive: boolean;
     endDate: string;
+    graceEndDate?: string | null;
     daysRemaining: number;
+    daysPastEnd?: number;
+    daysUntilSuspension?: number | null;
+    isInGracePeriod?: boolean;
+    isBeyondGracePeriod?: boolean;
     severity: AlertSeverity;
     owner: {
         id: string | null;
@@ -91,9 +97,12 @@ interface SubscriptionAlert {
 interface AlertsSummary {
     totalAlerts: number;
     expired: number;
+    inGrace?: number;
     critical: number;
     warning: number;
     info: number;
+    warningDays?: number;
+    graceDays?: number;
     maintenance: {
         updatedCount: number;
         affectedIds: string[];
@@ -102,23 +111,23 @@ interface AlertsSummary {
 }
 
 const planLabels: Record<Plan, string> = {
-    free: 'مجاني',
-    basic: 'أساسي',
-    premium: 'احترافي',
-    enterprise: 'مؤسسي',
+    free: 'Ù…Ø¬Ø§Ù†ÙŠ',
+    basic: 'Ø£Ø³Ø§Ø³ÙŠ',
+    premium: 'Ø§Ø­ØªØ±Ø§ÙÙŠ',
+    enterprise: 'Ù…Ø¤Ø³Ø³ÙŠ',
 };
 
 const statusLabels: Record<SubscriptionStatus, string> = {
-    active: 'نشط',
-    suspended: 'معلّق',
-    cancelled: 'ملغي',
+    active: 'Ù†Ø´Ø·',
+    suspended: 'Ù…Ø¹Ù„Ù‘Ù‚',
+    cancelled: 'Ù…Ù„ØºÙŠ',
 };
 
 const alertLabels: Record<AlertSeverity, string> = {
-    info: 'متابعة',
-    warning: 'تنبيه',
-    critical: 'حرج',
-    expired: 'منتهي',
+    info: 'Ù…ØªØ§Ø¨Ø¹Ø©',
+    warning: 'ØªÙ†Ø¨ÙŠÙ‡',
+    critical: 'Ø­Ø±Ø¬',
+    expired: 'Ù…Ù†ØªÙ‡ÙŠ',
 };
 
 const formatDate = (value?: string | null) => {
@@ -131,8 +140,18 @@ const formatDate = (value?: string | null) => {
 const formatDaysRemaining = (daysRemaining: number) => {
     if (daysRemaining < 0) return `منتهي منذ ${Math.abs(daysRemaining)} يوم`;
     if (daysRemaining === 0) return 'ينتهي اليوم';
-    if (daysRemaining === 1) return 'ينتهي غداً';
+    if (daysRemaining === 1) return 'ينتهي غدًا';
     return `متبقي ${daysRemaining} أيام`;
+};
+
+const formatAlertTimeline = (alert: SubscriptionAlert) => {
+    if (alert.isBeyondGracePeriod) {
+        return `متجاوز للمهلة منذ ${alert.daysPastEnd || 0} يوم`;
+    }
+    if (alert.isInGracePeriod) {
+        return `مهلة سماح - متبقي ${alert.daysUntilSuspension ?? 0} يوم للتعليق`;
+    }
+    return formatDaysRemaining(alert.daysRemaining);
 };
 
 function alertBadgeClass(severity: AlertSeverity): string {
@@ -193,13 +212,13 @@ export default function SuperAdminPage() {
             const response = await fetchWithRefresh(`/api/super-admin/hotels?${params.toString()}`);
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'تعذر تحميل الفنادق');
+                setError(data.error || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚');
                 return false;
             }
             setHotels(Array.isArray(data.data) ? data.data : []);
             return true;
         } catch {
-            setError('تعذر تحميل الفنادق');
+            setError('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚');
             return false;
         } finally {
             setLoading(false);
@@ -216,14 +235,14 @@ export default function SuperAdminPage() {
             const response = await fetchWithRefresh(`/api/super-admin/subscription-alerts?${params.toString()}`);
             const data = await response.json();
             if (!response.ok) {
-                setError(data.error || 'تعذر تحميل تنبيهات الاشتراكات');
+                setError(data.error || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ ØªÙ†Ø¨ÙŠÙ‡Ø§Øª Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª');
                 return false;
             }
             setAlerts(Array.isArray(data.data) ? data.data : []);
             setAlertsSummary(data.summary || null);
             return true;
         } catch {
-            setError('تعذر تحميل تنبيهات الاشتراكات');
+            setError('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ ØªÙ†Ø¨ÙŠÙ‡Ø§Øª Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª');
             return false;
         } finally {
             setAlertsLoading(false);
@@ -259,15 +278,15 @@ export default function SuperAdminPage() {
             });
             const result = await response.json();
             if (!response.ok) {
-                setError(result.error || 'فشل إنشاء الفندق');
+                setError(result.error || 'ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„ÙÙ†Ø¯Ù‚');
                 return;
             }
-            setSuccess('تم إنشاء الفندق وحساب المدير بنجاح');
+            setSuccess('ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„ÙÙ†Ø¯Ù‚ ÙˆØ­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø¯ÙŠØ± Ø¨Ù†Ø¬Ø§Ø­');
             reset();
             await fetchHotels(search);
             await fetchSubscriptionAlerts(false);
         } catch {
-            setError('فشل الاتصال بالخادم');
+            setError('ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…');
         } finally {
             setSubmitting(false);
         }
@@ -280,7 +299,7 @@ export default function SuperAdminPage() {
             body: JSON.stringify(payload),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'تعذر تحديث الفندق');
+        if (!response.ok) throw new Error(result.error || 'ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„ÙÙ†Ø¯Ù‚');
         setHotels((prev) => prev.map((h) => (h._id === hotelId ? result.data : h)));
     };
 
@@ -289,9 +308,9 @@ export default function SuperAdminPage() {
         setSuccess(null);
         try {
             await patchHotel(hotel._id, { isActive: !hotel.isActive });
-            setSuccess('تم تحديث حالة التفعيل');
+            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„ØªÙØ¹ÙŠÙ„');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'فشل تحديث حالة الفندق');
+            setError(err instanceof Error ? err.message : 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„ÙÙ†Ø¯Ù‚');
         }
     };
 
@@ -300,9 +319,9 @@ export default function SuperAdminPage() {
         setSuccess(null);
         try {
             await patchHotel(hotel._id, { isVerified: !hotel.verification?.isVerified });
-            setSuccess('تم تحديث حالة التحقق');
+            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„ØªØ­Ù‚Ù‚');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'فشل تحديث حالة التحقق');
+            setError(err instanceof Error ? err.message : 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„ØªØ­Ù‚Ù‚');
         }
     };
 
@@ -331,9 +350,9 @@ export default function SuperAdminPage() {
             });
             setSubscriptionForm(null);
             await fetchSubscriptionAlerts(false);
-            setSuccess('تم حفظ بيانات الاشتراك');
+            setSuccess('ØªÙ… Ø­ÙØ¸ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'فشل حفظ الاشتراك');
+            setError(err instanceof Error ? err.message : 'ÙØ´Ù„ Ø­ÙØ¸ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ');
         } finally {
             setSavingSubscription(false);
         }
@@ -341,7 +360,7 @@ export default function SuperAdminPage() {
 
     const openAdmin = (hotel: HotelItem) => {
         if (!hotel.admin) {
-            setError('لا يوجد حساب مدير مرتبط بهذا الفندق');
+            setError('Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø­Ø³Ø§Ø¨ Ù…Ø¯ÙŠØ± Ù…Ø±ØªØ¨Ø· Ø¨Ù‡Ø°Ø§ Ø§Ù„ÙÙ†Ø¯Ù‚');
             return;
         }
         setAdminForm({
@@ -371,12 +390,12 @@ export default function SuperAdminPage() {
                 }),
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'فشل تحديث حساب مدير الفندق');
-            setSuccess('تم تحديث حساب مدير الفندق');
+            if (!response.ok) throw new Error(result.error || 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø­Ø³Ø§Ø¨ Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚');
+            setSuccess('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø³Ø§Ø¨ Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚');
             setAdminForm(null);
             await fetchHotels(search);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'فشل تحديث حساب مدير الفندق');
+            setError(err instanceof Error ? err.message : 'ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø­Ø³Ø§Ø¨ Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚');
         } finally {
             setSavingAdmin(false);
         }
@@ -389,10 +408,10 @@ export default function SuperAdminPage() {
             const alertsOk = await fetchSubscriptionAlerts(true);
             const hotelsOk = await fetchHotels(search);
             if (alertsOk && hotelsOk) {
-                setSuccess('تم تشغيل صيانة الاشتراكات بنجاح');
+                setSuccess('ØªÙ… ØªØ´ØºÙŠÙ„ ØµÙŠØ§Ù†Ø© Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª Ø¨Ù†Ø¬Ø§Ø­');
             }
         } catch {
-            setError('فشل تشغيل صيانة الاشتراكات');
+            setError('ÙØ´Ù„ ØªØ´ØºÙŠÙ„ ØµÙŠØ§Ù†Ø© Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª');
         } finally {
             setRunningMaintenance(false);
         }
@@ -417,23 +436,27 @@ export default function SuperAdminPage() {
             <section className="page-hero">
                 <div className="page-hero-content flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-white">لوحة إدارة الفنادق والاشتراكات</h1>
-                        <p className="mt-2 text-white/60">إنشاء حسابات مالكي الفنادق، إدارة الاشتراكات، والتحقق من الحسابات والمرافق.</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-white">Ù„ÙˆØ­Ø© Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„ÙÙ†Ø§Ø¯Ù‚ ÙˆØ§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª</h1>
+                        <p className="mt-2 text-white/60">Ø¥Ù†Ø´Ø§Ø¡ Ø­Ø³Ø§Ø¨Ø§Øª Ù…Ø§Ù„ÙƒÙŠ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚ØŒ Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§ØªØŒ ÙˆØ§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª ÙˆØ§Ù„Ù…Ø±Ø§ÙÙ‚.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <Link href="/super-admin/subscriptions" className="btn-secondary text-sm">
+                            <CalendarClock className="w-4 h-4" />
+                            مراقبة الاشتراكات
+                        </Link>
                         <Link href="/super-admin/users" className="btn-secondary text-sm">
                             <Users className="w-4 h-4" />
-                            إدارة المستخدمين
+                            Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†
                         </Link>
                         {isMainSuperAdmin && (
                             <Link href="/super-admin/sub-super-admins" className="btn-secondary text-sm">
                                 <ShieldCheck className="w-4 h-4" />
-                                مراقبة الصب سوبر أدمن
+                                Ù…Ø±Ø§Ù‚Ø¨Ø© Ø§Ù„ØµØ¨ Ø³ÙˆØ¨Ø± Ø£Ø¯Ù…Ù†
                             </Link>
                         )}
                         <button type="button" onClick={() => fetchHotels(search)} className="btn-secondary text-sm">
                             <RefreshCcw className="w-4 h-4" />
-                            تحديث الفنادق
+                            ØªØ­Ø¯ÙŠØ« Ø§Ù„ÙÙ†Ø§Ø¯Ù‚
                         </button>
                     </div>
                 </div>
@@ -447,9 +470,9 @@ export default function SuperAdminPage() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="stat-card"><p className="text-xs text-white/50">إجمالي الفنادق</p><p className="text-lg font-semibold text-primary-300">{stats.total}</p></div>
-                <div className="stat-card"><p className="text-xs text-white/50">الحسابات النشطة</p><p className="text-lg font-semibold text-success-500">{stats.active}</p></div>
-                <div className="stat-card"><p className="text-xs text-white/50">فنادق موثقة</p><p className="text-lg font-semibold text-accent-300">{stats.verified}</p></div>
+                <div className="stat-card"><p className="text-xs text-white/50">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙÙ†Ø§Ø¯Ù‚</p><p className="text-lg font-semibold text-primary-300">{stats.total}</p></div>
+                <div className="stat-card"><p className="text-xs text-white/50">Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù†Ø´Ø·Ø©</p><p className="text-lg font-semibold text-success-500">{stats.active}</p></div>
+                <div className="stat-card"><p className="text-xs text-white/50">ÙÙ†Ø§Ø¯Ù‚ Ù…ÙˆØ«Ù‚Ø©</p><p className="text-lg font-semibold text-accent-300">{stats.verified}</p></div>
             </div>
 
             <div className="card p-5 space-y-4">
@@ -457,9 +480,9 @@ export default function SuperAdminPage() {
                     <div>
                         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                             <AlertTriangle className="w-5 h-5 text-warning-500" />
-                            تنبيهات الاشتراكات
+                            ØªÙ†Ø¨ÙŠÙ‡Ø§Øª Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª
                         </h2>
-                        <p className="text-xs text-white/60 mt-1">متابعة الاشتراكات القريبة من الانتهاء مع تعليق تلقائي للحسابات المنتهية.</p>
+                        <p className="text-xs text-white/60 mt-1">Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª Ø§Ù„Ù‚Ø±ÙŠØ¨Ø© Ù…Ù† Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ Ù…Ø¹ ØªØ¹Ù„ÙŠÙ‚ ØªÙ„Ù‚Ø§Ø¦ÙŠ Ù„Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…Ù†ØªÙ‡ÙŠØ©.</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <select
@@ -467,14 +490,14 @@ export default function SuperAdminPage() {
                             onChange={(e) => setAlertsWindowDays(Number(e.target.value))}
                             className="input-compact text-sm min-w-[160px]"
                         >
-                            <option value={3}>نافذة 3 أيام</option>
-                            <option value={7}>نافذة 7 أيام</option>
-                            <option value={14}>نافذة 14 يوم</option>
-                            <option value={30}>نافذة 30 يوم</option>
+                            <option value={3}>Ù†Ø§ÙØ°Ø© 3 Ø£ÙŠØ§Ù…</option>
+                            <option value={7}>Ù†Ø§ÙØ°Ø© 7 Ø£ÙŠØ§Ù…</option>
+                            <option value={14}>Ù†Ø§ÙØ°Ø© 14 ÙŠÙˆÙ…</option>
+                            <option value={30}>Ù†Ø§ÙØ°Ø© 30 ÙŠÙˆÙ…</option>
                         </select>
                         <button type="button" onClick={() => fetchSubscriptionAlerts(false)} className="btn-secondary text-sm">
                             <RefreshCcw className="w-4 h-4" />
-                            تحديث التنبيهات
+                            ØªØ­Ø¯ÙŠØ« Ø§Ù„ØªÙ†Ø¨ÙŠÙ‡Ø§Øª
                         </button>
                         <button type="button" className="btn-primary text-sm" onClick={runMaintenanceNow} disabled={runningMaintenance}>
                             {runningMaintenance ? (
@@ -482,32 +505,36 @@ export default function SuperAdminPage() {
                             ) : (
                                 <>
                                     <Settings2 className="w-4 h-4" />
-                                    تشغيل الصيانة
+                                    ØªØ´ØºÙŠÙ„ Ø§Ù„ØµÙŠØ§Ù†Ø©
                                 </>
                             )}
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                     <div className="surface-tile">
-                        <p className="text-xs text-white/60">إجمالي التنبيهات</p>
+                        <p className="text-xs text-white/60">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ØªÙ†Ø¨ÙŠÙ‡Ø§Øª</p>
                         <p className="text-lg font-semibold text-primary-300">{alertsSummary?.totalAlerts || 0}</p>
                     </div>
                     <div className="surface-tile">
-                        <p className="text-xs text-white/60">منتهية</p>
+                        <p className="text-xs text-white/60">Ù…Ù†ØªÙ‡ÙŠØ©</p>
                         <p className="text-lg font-semibold text-danger-500">{alertsSummary?.expired || 0}</p>
                     </div>
                     <div className="surface-tile">
-                        <p className="text-xs text-white/60">حرجة</p>
+                        <p className="text-xs text-white/60">داخل مهلة السماح</p>
+                        <p className="text-lg font-semibold text-warning-500">{alertsSummary?.inGrace || 0}</p>
+                    </div>
+                    <div className="surface-tile">
+                        <p className="text-xs text-white/60">Ø­Ø±Ø¬Ø©</p>
                         <p className="text-lg font-semibold text-danger-500">{alertsSummary?.critical || 0}</p>
                     </div>
                     <div className="surface-tile">
-                        <p className="text-xs text-white/60">تنبيه</p>
+                        <p className="text-xs text-white/60">ØªÙ†Ø¨ÙŠÙ‡</p>
                         <p className="text-lg font-semibold text-warning-500">{alertsSummary?.warning || 0}</p>
                     </div>
                     <div className="surface-tile">
-                        <p className="text-xs text-white/60">تم تعليقها بالصيانة</p>
+                        <p className="text-xs text-white/60">ØªÙ… ØªØ¹Ù„ÙŠÙ‚Ù‡Ø§ Ø¨Ø§Ù„ØµÙŠØ§Ù†Ø©</p>
                         <p className="text-lg font-semibold text-accent-300">{alertsSummary?.maintenance?.updatedCount || 0}</p>
                     </div>
                 </div>
@@ -515,18 +542,18 @@ export default function SuperAdminPage() {
                 {alertsLoading ? (
                     <div className="flex justify-center py-8"><div className="spinner w-9 h-9" /></div>
                 ) : alerts.length === 0 ? (
-                    <p className="text-white/60 text-center py-8">لا توجد اشتراكات ضمن نافذة التنبيه الحالية.</p>
+                    <p className="text-white/60 text-center py-8">Ù„Ø§ ØªÙˆØ¬Ø¯ Ø§Ø´ØªØ±Ø§ÙƒØ§Øª Ø¶Ù…Ù† Ù†Ø§ÙØ°Ø© Ø§Ù„ØªÙ†Ø¨ÙŠÙ‡ Ø§Ù„Ø­Ø§Ù„ÙŠØ©.</p>
                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>الفندق</th>
-                                    <th>مدير الفندق</th>
-                                    <th>الحالة</th>
-                                    <th>تاريخ الانتهاء</th>
-                                    <th>الوقت المتبقي</th>
-                                    <th>تفاصيل</th>
+                                    <th>Ø§Ù„ÙÙ†Ø¯Ù‚</th>
+                                    <th>Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚</th>
+                                    <th>Ø§Ù„Ø­Ø§Ù„Ø©</th>
+                                    <th>ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡</th>
+                                    <th>Ø§Ù„ÙˆÙ‚Øª Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ</th>
+                                    <th>ØªÙØ§ØµÙŠÙ„</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -546,10 +573,11 @@ export default function SuperAdminPage() {
                                             </span>
                                         </td>
                                         <td className="text-white/80">{formatDate(alert.endDate)}</td>
-                                        <td className="text-white/70">{formatDaysRemaining(alert.daysRemaining)}</td>
+                                        <td className="text-white/70">{formatAlertTimeline(alert)}</td>
                                         <td>
-                                            <p className="text-xs text-white/60">حالة الاشتراك: {statusLabels[(alert.subscriptionStatus as SubscriptionStatus)] || alert.subscriptionStatus}</p>
-                                            <p className="text-xs text-white/60">حالة الحساب: {alert.isActive ? 'نشط' : 'معلّق'}</p>
+                                            <p className="text-xs text-white/60">Ø­Ø§Ù„Ø© Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ: {statusLabels[(alert.subscriptionStatus as SubscriptionStatus)] || alert.subscriptionStatus}</p>
+                                            {alert.graceEndDate && <p className="text-xs text-white/60">نهاية مهلة السماح: {formatDate(alert.graceEndDate)}</p>}
+                                            <p className="text-xs text-white/60">Ø­Ø§Ù„Ø© Ø§Ù„Ø­Ø³Ø§Ø¨: {alert.isActive ? 'Ù†Ø´Ø·' : 'Ù…Ø¹Ù„Ù‘Ù‚'}</p>
                                         </td>
                                     </tr>
                                 ))}
@@ -560,25 +588,25 @@ export default function SuperAdminPage() {
             </div>
 
             <div className="card p-5 space-y-4">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Building2 className="w-5 h-5 text-primary-300" />إنشاء فندق جديد</h2>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Building2 className="w-5 h-5 text-primary-300" />Ø¥Ù†Ø´Ø§Ø¡ ÙÙ†Ø¯Ù‚ Ø¬Ø¯ÙŠØ¯</h2>
                 <form onSubmit={handleSubmit(onCreateHotel)} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                    <input {...register('hotelName')} className="input-compact w-full" placeholder="اسم الفندق" />
-                    <input {...register('adminName')} className="input-compact w-full" placeholder="اسم المدير" />
-                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="البريد الإلكتروني" dir="ltr" />
-                    <input {...register('phone')} className="input-compact w-full" placeholder="رقم الهاتف" dir="ltr" />
-                    <input {...register('city')} className="input-compact w-full" placeholder="المدينة" />
-                    <input {...register('country')} className="input-compact w-full" placeholder="الدولة" />
+                    <input {...register('hotelName')} className="input-compact w-full" placeholder="Ø§Ø³Ù… Ø§Ù„ÙÙ†Ø¯Ù‚" />
+                    <input {...register('adminName')} className="input-compact w-full" placeholder="Ø§Ø³Ù… Ø§Ù„Ù…Ø¯ÙŠØ±" />
+                    <input {...register('email')} type="email" className="input-compact w-full" placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" dir="ltr" />
+                    <input {...register('phone')} className="input-compact w-full" placeholder="Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ" dir="ltr" />
+                    <input {...register('city')} className="input-compact w-full" placeholder="Ø§Ù„Ù…Ø¯ÙŠÙ†Ø©" />
+                    <input {...register('country')} className="input-compact w-full" placeholder="Ø§Ù„Ø¯ÙˆÙ„Ø©" />
                     <div className="md:col-span-2 xl:col-span-2">
-                        <input {...register('password')} type="password" className="input-compact w-full" placeholder="كلمة مرور المدير" dir="ltr" />
+                        <input {...register('password')} type="password" className="input-compact w-full" placeholder="ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ù…Ø¯ÙŠØ±" dir="ltr" />
                     </div>
                     <div className="md:col-span-2 xl:col-span-4 flex justify-end">
                         <button type="submit" className="btn-primary text-sm" disabled={submitting}>
-                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />إنشاء الفندق</>}
+                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" />Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„ÙÙ†Ø¯Ù‚</>}
                         </button>
                     </div>
                 </form>
                 {(errors.hotelName || errors.adminName || errors.email || errors.password) && (
-                    <p className="text-xs text-danger-500">يرجى مراجعة الحقول المطلوبة قبل الحفظ.</p>
+                    <p className="text-xs text-danger-500">ÙŠØ±Ø¬Ù‰ Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø­Ù‚ÙˆÙ„ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨Ø© Ù‚Ø¨Ù„ Ø§Ù„Ø­ÙØ¸.</p>
                 )}
             </div>
 
@@ -586,39 +614,39 @@ export default function SuperAdminPage() {
                 <div className="flex flex-col lg:flex-row gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                        <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="input-compact w-full pr-9" placeholder="بحث باسم الفندق أو البريد الإلكتروني" />
+                        <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="input-compact w-full pr-9" placeholder="Ø¨Ø­Ø« Ø¨Ø§Ø³Ù… Ø§Ù„ÙÙ†Ø¯Ù‚ Ø£Ùˆ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" />
                     </div>
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="input-compact min-w-[120px]">
-                        <option value="all">كل الحالات</option><option value="active">نشط</option><option value="inactive">غير نشط</option>
+                        <option value="all">ÙƒÙ„ Ø§Ù„Ø­Ø§Ù„Ø§Øª</option><option value="active">Ù†Ø´Ø·</option><option value="inactive">ØºÙŠØ± Ù†Ø´Ø·</option>
                     </select>
                     <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value as typeof planFilter)} className="input-compact min-w-[120px]">
-                        <option value="all">كل الباقات</option><option value="free">مجاني</option><option value="basic">أساسي</option><option value="premium">احترافي</option><option value="enterprise">مؤسسي</option>
+                        <option value="all">ÙƒÙ„ Ø§Ù„Ø¨Ø§Ù‚Ø§Øª</option><option value="free">Ù…Ø¬Ø§Ù†ÙŠ</option><option value="basic">Ø£Ø³Ø§Ø³ÙŠ</option><option value="premium">Ø§Ø­ØªØ±Ø§ÙÙŠ</option><option value="enterprise">Ù…Ø¤Ø³Ø³ÙŠ</option>
                     </select>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center py-8"><div className="spinner w-9 h-9" /></div>
                 ) : filteredHotels.length === 0 ? (
-                    <p className="text-white/60 text-center py-8">لا توجد فنادق مطابقة للفلاتر الحالية.</p>
+                    <p className="text-white/60 text-center py-8">Ù„Ø§ ØªÙˆØ¬Ø¯ ÙÙ†Ø§Ø¯Ù‚ Ù…Ø·Ø§Ø¨Ù‚Ø© Ù„Ù„ÙÙ„Ø§ØªØ± Ø§Ù„Ø­Ø§Ù„ÙŠØ©.</p>
                 ) : (
                     <div className="table-container">
                         <table className="table">
-                            <thead><tr><th>الفندق</th><th>المدير</th><th>الاشتراك</th><th>الدفع / الانتهاء</th><th>الحالة</th>{isMainSuperAdmin && <th>التحقق</th>}<th>إجراءات</th></tr></thead>
+                            <thead><tr><th>Ø§Ù„ÙÙ†Ø¯Ù‚</th><th>Ø§Ù„Ù…Ø¯ÙŠØ±</th><th>Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ</th><th>Ø§Ù„Ø¯ÙØ¹ / Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡</th><th>Ø§Ù„Ø­Ø§Ù„Ø©</th>{isMainSuperAdmin && <th>Ø§Ù„ØªØ­Ù‚Ù‚</th>}<th>Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th></tr></thead>
                             <tbody>
                                 {filteredHotels.map((hotel) => (
                                     <tr key={hotel._id}>
                                         <td><p className="font-medium text-white">{hotel.name}</p><p className="text-xs text-white/50">{hotel.address?.city || '-'}</p></td>
-                                        <td>{hotel.admin ? <><p className="font-medium text-white text-sm">{hotel.admin.name}</p><p className="text-xs text-white/60" dir="ltr">{hotel.admin.email}</p></> : <span className="text-xs text-warning-500">لا يوجد مدير</span>}</td>
+                                        <td>{hotel.admin ? <><p className="font-medium text-white text-sm">{hotel.admin.name}</p><p className="text-xs text-white/60" dir="ltr">{hotel.admin.email}</p></> : <span className="text-xs text-warning-500">Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø¯ÙŠØ±</span>}</td>
                                         <td><p className="text-xs">{planLabels[hotel.subscription?.plan || 'free']}</p><p className="text-xs text-white/60">{statusLabels[hotel.subscription?.status || 'active']}</p></td>
-                                        <td><p className="text-xs">الدفع: {formatDate(hotel.subscription?.paymentDate)}</p><p className="text-xs text-white/60">الانتهاء: {formatDate(hotel.subscription?.endDate)}</p></td>
-                                        <td>{hotel.isActive ? <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />نشط</span> : <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />غير نشط</span>}</td>
-                                        {isMainSuperAdmin && <td>{hotel.verification?.isVerified ? <span className="badge-success">موثق</span> : <span className="badge-warning">بانتظار التحقق</span>}</td>}
+                                        <td><p className="text-xs">Ø§Ù„Ø¯ÙØ¹: {formatDate(hotel.subscription?.paymentDate)}</p><p className="text-xs text-white/60">Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡: {formatDate(hotel.subscription?.endDate)}</p></td>
+                                        <td>{hotel.isActive ? <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />Ù†Ø´Ø·</span> : <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />ØºÙŠØ± Ù†Ø´Ø·</span>}</td>
+                                        {isMainSuperAdmin && <td>{hotel.verification?.isVerified ? <span className="badge-success">Ù…ÙˆØ«Ù‚</span> : <span className="badge-warning">Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„ØªØ­Ù‚Ù‚</span>}</td>}
                                         <td>
                                             <div className="flex flex-wrap gap-1">
-                                                <button className="btn-secondary text-xs" onClick={() => toggleHotel(hotel)}>{hotel.isActive ? 'تعطيل' : 'تفعيل'}</button>
-                                                <button className="btn-secondary text-xs" onClick={() => openSubscription(hotel)}><Settings2 className="w-3.5 h-3.5" />تجديد الاشتراك</button>
-                                                <button className="btn-secondary text-xs" onClick={() => openAdmin(hotel)}><Pencil className="w-3.5 h-3.5" />حساب المدير</button>
-                                                {isMainSuperAdmin && <button className="btn-secondary text-xs" onClick={() => toggleVerify(hotel)}>{hotel.verification?.isVerified ? 'إلغاء التحقق' : 'تحقق'}</button>}
+                                                <button className="btn-secondary text-xs" onClick={() => toggleHotel(hotel)}>{hotel.isActive ? 'ØªØ¹Ø·ÙŠÙ„' : 'ØªÙØ¹ÙŠÙ„'}</button>
+                                                <button className="btn-secondary text-xs" onClick={() => openSubscription(hotel)}><Settings2 className="w-3.5 h-3.5" />ØªØ¬Ø¯ÙŠØ¯ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ</button>
+                                                <button className="btn-secondary text-xs" onClick={() => openAdmin(hotel)}><Pencil className="w-3.5 h-3.5" />Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø¯ÙŠØ±</button>
+                                                {isMainSuperAdmin && <button className="btn-secondary text-xs" onClick={() => toggleVerify(hotel)}>{hotel.verification?.isVerified ? 'Ø¥Ù„ØºØ§Ø¡ Ø§Ù„ØªØ­Ù‚Ù‚' : 'ØªØ­Ù‚Ù‚'}</button>}
                                             </div>
                                         </td>
                                     </tr>
@@ -631,30 +659,30 @@ export default function SuperAdminPage() {
 
             {subscriptionForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">تجديد الاشتراك (30 يوم)</h3>
+                    <h3 className="text-base font-semibold text-white">ØªØ¬Ø¯ÙŠØ¯ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ (30 ÙŠÙˆÙ…)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <select value={subscriptionForm.plan} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, plan: e.target.value as Plan } : prev)} className="input-compact w-full"><option value="free">مجاني</option><option value="basic">أساسي</option><option value="premium">احترافي</option><option value="enterprise">مؤسسي</option></select>
+                        <select value={subscriptionForm.plan} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, plan: e.target.value as Plan } : prev)} className="input-compact w-full"><option value="free">Ù…Ø¬Ø§Ù†ÙŠ</option><option value="basic">Ø£Ø³Ø§Ø³ÙŠ</option><option value="premium">Ø§Ø­ØªØ±Ø§ÙÙŠ</option><option value="enterprise">Ù…Ø¤Ø³Ø³ÙŠ</option></select>
                         <input type="date" value={subscriptionForm.paymentDate} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, paymentDate: e.target.value } : prev)} className="input-compact w-full" />
                         <div className="surface-tile text-sm text-white/70">
-                            <p className="text-xs text-white/50 mb-1">تاريخ الانتهاء الحالي</p>
+                            <p className="text-xs text-white/50 mb-1">ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ Ø§Ù„Ø­Ø§Ù„ÙŠ</p>
                             <p className="font-medium text-white">{formatDate(subscriptionForm.currentEndDate)}</p>
-                            <p className="text-xs text-white/50 mt-2">عند التجديد سيتم تمديد الاشتراك تلقائياً لمدة 30 يوم، وتفعيل الحساب.</p>
+                            <p className="text-xs text-white/50 mt-2">Ø¹Ù†Ø¯ Ø§Ù„ØªØ¬Ø¯ÙŠØ¯ Ø³ÙŠØªÙ… ØªÙ…Ø¯ÙŠØ¯ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ù„Ù…Ø¯Ø© 30 ÙŠÙˆÙ…ØŒ ÙˆØªÙØ¹ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨.</p>
                         </div>
                     </div>
-                    <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setSubscriptionForm(null)}>إغلاق</button><button className="btn-primary text-sm" onClick={saveSubscription} disabled={savingSubscription}>{savingSubscription ? <Loader2 className="w-4 h-4 animate-spin" /> : 'تجديد الاشتراك'}</button></div>
+                    <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setSubscriptionForm(null)}>Ø¥ØºÙ„Ø§Ù‚</button><button className="btn-primary text-sm" onClick={saveSubscription} disabled={savingSubscription}>{savingSubscription ? <Loader2 className="w-4 h-4 animate-spin" /> : 'ØªØ¬Ø¯ÙŠØ¯ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ'}</button></div>
                 </div>
             )}
 
             {adminForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">تعديل حساب مدير الفندق</h3>
+                    <h3 className="text-base font-semibold text-white">ØªØ¹Ø¯ÙŠÙ„ Ø­Ø³Ø§Ø¨ Ù…Ø¯ÙŠØ± Ø§Ù„ÙÙ†Ø¯Ù‚</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input value={adminForm.name} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="الاسم" />
-                        <input value={adminForm.email} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="البريد الإلكتروني" dir="ltr" />
-                        <input value={adminForm.phone} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="رقم الهاتف" dir="ltr" />
-                        <label className="surface-tile flex items-center justify-between text-sm">تفعيل الحساب<input type="checkbox" checked={adminForm.isActive} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} /></label>
+                        <input value={adminForm.name} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, name: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø§Ù„Ø§Ø³Ù…" />
+                        <input value={adminForm.email} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, email: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ" dir="ltr" />
+                        <input value={adminForm.phone} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, phone: e.target.value } : prev)} className="input-compact w-full" placeholder="Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ" dir="ltr" />
+                        <label className="surface-tile flex items-center justify-between text-sm">ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨<input type="checkbox" checked={adminForm.isActive} onChange={(e) => setAdminForm((prev) => prev ? { ...prev, isActive: e.target.checked } : prev)} /></label>
                     </div>
-                    <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setAdminForm(null)}>إغلاق</button><button className="btn-primary text-sm" onClick={saveAdmin} disabled={savingAdmin}>{savingAdmin ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ الحساب'}</button></div>
+                    <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setAdminForm(null)}>Ø¥ØºÙ„Ø§Ù‚</button><button className="btn-primary text-sm" onClick={saveAdmin} disabled={savingAdmin}>{savingAdmin ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ø­ÙØ¸ Ø§Ù„Ø­Ø³Ø§Ø¨'}</button></div>
                 </div>
             )}
         </div>

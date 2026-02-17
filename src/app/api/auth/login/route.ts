@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
 import { Hotel, User } from '@/core/db/models';
-import { verifyPassword, generateTokenPair, setAuthCookies, getPermissionsForRole, hashToken } from '@/core/auth';
+import {
+    verifyPassword,
+    generateTokenPair,
+    setAuthCookies,
+    getPermissionsForRole,
+    hashToken,
+    generatePinChallengeToken,
+    setPinChallengeCookie,
+    isPinConfigured,
+} from '@/core/auth';
 import { loginSchema } from '@/lib/validations';
 import { UserRole } from '@/core/db/models';
 import { checkRateLimit, getClientIp } from '@/core/security/rateLimit';
 import { isSubscriptionExpired } from '@/core/subscription/policy';
 
 function isPlatformAdminRole(role: string): boolean {
+    return role === 'super_admin' || role === 'sub_super_admin';
+}
+
+function requiresPinVerification(role: string): boolean {
     return role === 'super_admin' || role === 'sub_super_admin';
 }
 
@@ -46,7 +59,7 @@ export async function POST(request: NextRequest) {
 
         // Find user with password
         const user = await User.findOne({ email, isActive: true })
-            .select('+passwordHash')
+            .select('+passwordHash +mfaSecret')
             .populate('hotel', 'name slug isActive');
 
         if (!user) {
@@ -102,6 +115,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        if (requiresPinVerification(user.role)) {
+            const challengeToken = await generatePinChallengeToken(user._id.toString(), user.role);
+            await setPinChallengeCookie(challengeToken);
+
+            return NextResponse.json({
+                success: true,
+                pinRequired: true,
+                setupRequired: !isPinConfigured({
+                    mfaEnabled: Boolean(user.mfaEnabled),
+                    mfaSecret: (user as any).mfaSecret || null,
+                }),
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    hotelId: user.hotelId,
+                },
+            });
+        }
+
         // Get permissions for role
         const rolePermissions = getPermissionsForRole(user.role as UserRole);
         const permissions = Array.from(
@@ -127,6 +161,7 @@ export async function POST(request: NextRequest) {
         // Response
         return NextResponse.json({
             success: true,
+            pinRequired: false,
             user: {
                 id: user._id,
                 name: user.name,

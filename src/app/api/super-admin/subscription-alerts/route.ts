@@ -4,8 +4,14 @@ import connectDB from '@/core/db/connection';
 import { Hotel, User } from '@/core/db/models';
 import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import { writeAuditLog } from '@/core/audit/logger';
+import {
+    SUBSCRIPTION_GRACE_DAYS,
+    SUBSCRIPTION_WARNING_DAYS,
+    getSubscriptionTimeline,
+} from '@/core/subscription/policy';
+import { runSubscriptionMaintenance } from '@/core/subscription/maintenance';
+import { runSubscriptionNotificationSweep } from '@/core/subscription/notifications';
 
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_WINDOW_DAYS = 7;
 const MAX_WINDOW_DAYS = 30;
 
@@ -19,7 +25,12 @@ interface AlertItem {
     subscriptionStatus: string;
     isActive: boolean;
     endDate: string;
+    graceEndDate: string | null;
     daysRemaining: number;
+    daysPastEnd: number;
+    daysUntilSuspension: number | null;
+    isInGracePeriod: boolean;
+    isBeyondGracePeriod: boolean;
     severity: AlertSeverity;
     owner: {
         id: string | null;
@@ -45,59 +56,15 @@ function parseWindowDays(raw: string | null): number {
     return Math.min(Math.max(parsed, 1), MAX_WINDOW_DAYS);
 }
 
-function getSeverity(daysRemaining: number): AlertSeverity {
-    if (daysRemaining < 0) return 'expired';
-    if (daysRemaining <= 1) return 'critical';
-    if (daysRemaining <= 3) return 'warning';
+function getSeverity(args: {
+    isInGracePeriod: boolean;
+    isBeyondGracePeriod: boolean;
+    daysRemaining: number;
+}): AlertSeverity {
+    if (args.isBeyondGracePeriod) return 'expired';
+    if (args.isInGracePeriod) return 'critical';
+    if (args.daysRemaining <= SUBSCRIPTION_WARNING_DAYS) return 'warning';
     return 'info';
-}
-
-async function runSubscriptionMaintenance(
-    request: NextRequest,
-    auth: AuthContext,
-    scopedFilter: Record<string, unknown>
-): Promise<{ updatedCount: number; affectedIds: string[] }> {
-    const now = new Date();
-    const expiredFilter = {
-        ...scopedFilter,
-        'subscription.endDate': { $ne: null, $lt: now },
-        'subscription.status': { $ne: 'cancelled' },
-    };
-
-    const expiredHotels = await Hotel.find(expiredFilter)
-        .select('_id name subscription.status isActive')
-        .lean();
-
-    if (expiredHotels.length === 0) {
-        return { updatedCount: 0, affectedIds: [] };
-    }
-
-    const expiredIds = expiredHotels.map((item) => item._id);
-    await Hotel.updateMany(
-        { _id: { $in: expiredIds } },
-        {
-            $set: {
-                'subscription.status': 'suspended',
-                isActive: false,
-            },
-        }
-    );
-
-    await writeAuditLog({
-        request,
-        auth,
-        action: 'subscription.maintenance',
-        entityType: 'subscription',
-        metadata: {
-            updatedHotelsCount: expiredHotels.length,
-            updatedHotelIds: expiredIds.map((id) => id.toString()),
-        },
-    });
-
-    return {
-        updatedCount: expiredHotels.length,
-        affectedIds: expiredIds.map((id) => id.toString()),
-    };
 }
 
 async function getSubscriptionAlerts(
@@ -113,10 +80,32 @@ async function getSubscriptionAlerts(
         const now = new Date();
 
         const scopedFilter = getScopedFilter(auth);
-        let maintenanceResult = { updatedCount: 0, affectedIds: [] as string[] };
+        let maintenanceResult = {
+            cutoffDate: '',
+            scannedOverdue: 0,
+            updatedCount: 0,
+            affectedIds: [] as string[],
+        };
         if (runMaintenance) {
-            maintenanceResult = await runSubscriptionMaintenance(request, auth, scopedFilter);
+            maintenanceResult = await runSubscriptionMaintenance(scopedFilter, now);
+            if (maintenanceResult.updatedCount > 0) {
+                await writeAuditLog({
+                    request,
+                    auth,
+                    action: 'subscription.maintenance',
+                    entityType: 'subscription',
+                    metadata: {
+                        graceDays: SUBSCRIPTION_GRACE_DAYS,
+                        warningDays: SUBSCRIPTION_WARNING_DAYS,
+                        updatedHotelsCount: maintenanceResult.updatedCount,
+                        updatedHotelIds: maintenanceResult.affectedIds,
+                        scannedOverdue: maintenanceResult.scannedOverdue,
+                        cutoffDate: maintenanceResult.cutoffDate,
+                    },
+                });
+            }
         }
+        const notificationResult = await runSubscriptionNotificationSweep(scopedFilter, now);
 
         const hotels = await Hotel.find({
             ...scopedFilter,
@@ -146,14 +135,18 @@ async function getSubscriptionAlerts(
 
         const alerts: AlertItem[] = [];
         for (const hotel of hotels) {
-            const endDateValue = hotel.subscription?.endDate;
-            if (!endDateValue) continue;
+            const timeline = getSubscriptionTimeline(
+                hotel.subscription?.endDate || null,
+                now,
+                SUBSCRIPTION_WARNING_DAYS,
+                SUBSCRIPTION_GRACE_DAYS
+            );
+            if (!timeline.hasEndDate || !timeline.endDate) continue;
 
-            const endDate = new Date(endDateValue);
-            if (Number.isNaN(endDate.getTime())) continue;
-
-            const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / DAY_IN_MS);
-            if (daysRemaining > windowDays) continue;
+            const shouldIncludeUpcoming = timeline.daysRemaining !== null && timeline.daysRemaining >= 0 && timeline.daysRemaining <= windowDays;
+            const shouldIncludeGrace = timeline.isInGracePeriod;
+            const shouldIncludeExpired = timeline.isBeyondGracePeriod;
+            if (!shouldIncludeUpcoming && !shouldIncludeGrace && !shouldIncludeExpired) continue;
 
             const owner = ownerByHotel.get(hotel._id.toString());
             alerts.push({
@@ -163,9 +156,18 @@ async function getSubscriptionAlerts(
                 phone: hotel.phone,
                 subscriptionStatus: hotel.subscription?.status || 'active',
                 isActive: Boolean(hotel.isActive),
-                endDate: endDate.toISOString(),
-                daysRemaining,
-                severity: getSeverity(daysRemaining),
+                endDate: timeline.endDate.toISOString(),
+                graceEndDate: timeline.graceEndDate ? timeline.graceEndDate.toISOString() : null,
+                daysRemaining: timeline.daysRemaining || 0,
+                daysPastEnd: timeline.daysPastEnd || 0,
+                daysUntilSuspension: timeline.daysUntilSuspension,
+                isInGracePeriod: timeline.isInGracePeriod,
+                isBeyondGracePeriod: timeline.isBeyondGracePeriod,
+                severity: getSeverity({
+                    isInGracePeriod: timeline.isInGracePeriod,
+                    isBeyondGracePeriod: timeline.isBeyondGracePeriod,
+                    daysRemaining: timeline.daysRemaining || 0,
+                }),
                 owner: {
                     id: owner?._id?.toString() || null,
                     name: owner?.name || '-',
@@ -176,16 +178,24 @@ async function getSubscriptionAlerts(
             });
         }
 
-        alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+        alerts.sort((a, b) => {
+            if (a.isBeyondGracePeriod !== b.isBeyondGracePeriod) return a.isBeyondGracePeriod ? -1 : 1;
+            if (a.isInGracePeriod !== b.isInGracePeriod) return a.isInGracePeriod ? -1 : 1;
+            return a.daysRemaining - b.daysRemaining;
+        });
 
         const summary = {
             totalAlerts: alerts.length,
-            expired: alerts.filter((item) => item.daysRemaining < 0).length,
-            critical: alerts.filter((item) => item.daysRemaining >= 0 && item.daysRemaining <= 1).length,
-            warning: alerts.filter((item) => item.daysRemaining >= 2 && item.daysRemaining <= 3).length,
-            info: alerts.filter((item) => item.daysRemaining >= 4 && item.daysRemaining <= windowDays).length,
+            expired: alerts.filter((item) => item.isBeyondGracePeriod).length,
+            inGrace: alerts.filter((item) => item.isInGracePeriod).length,
+            critical: alerts.filter((item) => item.severity === 'critical').length,
+            warning: alerts.filter((item) => item.severity === 'warning').length,
+            info: alerts.filter((item) => item.severity === 'info').length,
             maintenance: maintenanceResult,
+            notifications: notificationResult,
             windowDays,
+            warningDays: SUBSCRIPTION_WARNING_DAYS,
+            graceDays: SUBSCRIPTION_GRACE_DAYS,
         };
 
         return NextResponse.json({
@@ -203,4 +213,3 @@ async function getSubscriptionAlerts(
 }
 
 export const GET = withSuperAdmin(getSubscriptionAlerts);
-

@@ -15,6 +15,20 @@ export const loginSchema = z.object({
         .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
 });
 
+export const pinSetupSchema = z.object({
+    pin: z
+        .string()
+        .trim()
+        .regex(/^\d{4}$/, 'PIN must be 4 digits'),
+});
+
+export const pinVerifySchema = z.object({
+    pin: z
+        .string()
+        .trim()
+        .regex(/^\d{4}$/, 'PIN must be 4 digits'),
+});
+
 export const registerHotelSchema = z.object({
     hotelName: z
         .string()
@@ -217,6 +231,8 @@ export const hotelSettingsSchema = z.object({
 // ========================================
 
 export type LoginInput = z.infer<typeof loginSchema>;
+export type PinSetupInput = z.infer<typeof pinSetupSchema>;
+export type PinVerifyInput = z.infer<typeof pinVerifySchema>;
 export type RegisterHotelInput = z.infer<typeof registerHotelSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;

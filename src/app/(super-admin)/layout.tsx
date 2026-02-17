@@ -14,6 +14,7 @@ import {
     Search,
     ShieldCheck,
     Activity,
+    CalendarClock,
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 
@@ -26,6 +27,7 @@ interface UserData {
 
 const navigation = [
     { name: 'الفنادق والاشتراكات', href: '/super-admin', icon: LayoutDashboard },
+    { name: 'مراقبة الاشتراكات', href: '/super-admin/subscriptions', icon: CalendarClock },
     { name: 'المستخدمون والصلاحيات', href: '/super-admin/users', icon: Users },
     { name: 'مراقبة الصب سوبر أدمن', href: '/super-admin/sub-super-admins', icon: Activity },
 ];

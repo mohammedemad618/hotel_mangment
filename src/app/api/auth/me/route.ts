@@ -44,6 +44,8 @@ async function handler(
                 email: user.email,
                 role: user.role,
                 hotelId: user.hotelId,
+                pinEnabled: Boolean((user as any).mfaEnabled),
+                mfaEnabled: Boolean((user as any).mfaEnabled),
                 verification: (user as any).verification || { isVerified: false },
                 permissions: auth.permissions,
                 hotel: hotelData,
