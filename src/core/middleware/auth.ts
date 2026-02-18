@@ -262,6 +262,24 @@ export function withTenant(handler: AuthenticatedHandler) {
             );
         }
 
+        if (isPlatformAdminRole(auth.role) && !auth.hotelId) {
+            const scopedHotelFilter: Record<string, string> = { _id: effectiveHotelId };
+            if (auth.role === 'sub_super_admin') {
+                scopedHotelFilter.createdBy = auth.userId;
+            }
+
+            const scopedHotel = await Hotel.findOne(scopedHotelFilter)
+                .select('_id')
+                .lean();
+
+            if (!scopedHotel) {
+                return NextResponse.json(
+                    { error: 'Forbidden - hotel context is outside your scope' },
+                    { status: 403 }
+                );
+            }
+        }
+
         return runWithTenant(effectiveHotelId, () =>
             handler(request, context, { ...auth, hotelId: effectiveHotelId })
         );

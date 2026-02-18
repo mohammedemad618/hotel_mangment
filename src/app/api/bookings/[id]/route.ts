@@ -17,6 +17,14 @@ const allowedStatusTransitions: Record<string, string[]> = {
 
 const allowedPaymentMethods = ['cash', 'card', 'bank_transfer', 'online'];
 const allowedPaymentStatuses = ['pending', 'partial', 'paid', 'refunded'];
+const MONEY_EPSILON = 0.01;
+
+const roundMoney = (value: number) =>
+    Math.round((value + Number.EPSILON) * 100) / 100;
+
+const exceedsWithTolerance = (value: number, limit: number) =>
+    value - limit > MONEY_EPSILON;
+
 const statusPermissionMap: Record<string, Permission> = {
     confirmed: PERMISSIONS.BOOKING_CONFIRM,
     cancelled: PERMISSIONS.BOOKING_CANCEL,
@@ -212,7 +220,7 @@ async function updateBooking(
             }
 
             if (body.payment.addPayment) {
-                const amount = Number(body.payment.addPayment.amount);
+                const amount = roundMoney(Number(body.payment.addPayment.amount));
                 const method = String(body.payment.addPayment.method || '');
                 const reference = body.payment.addPayment.reference?.toString().trim();
 
@@ -231,17 +239,32 @@ async function updateBooking(
 
                 booking.payment = booking.payment || { status: 'pending', paidAmount: 0, transactions: [] } as any;
                 booking.payment.transactions = booking.payment.transactions || [];
+
+                const total = roundMoney(booking.pricing?.total || 0);
+                const currentPaid = roundMoney(booking.payment.paidAmount || 0);
+                const remaining = roundMoney(Math.max(total - currentPaid, 0));
+
+                if (total > 0 && exceedsWithTolerance(amount, remaining)) {
+                    return NextResponse.json(
+                        { error: 'Payment amount exceeds remaining balance' },
+                        { status: 400 }
+                    );
+                }
+
                 booking.payment.transactions.push({
                     amount,
                     method,
                     reference: reference || undefined,
                     date: new Date(),
                 });
-                booking.payment.paidAmount = (booking.payment.paidAmount || 0) + amount;
+                booking.payment.paidAmount = roundMoney(currentPaid + amount);
+                if (total > 0 && booking.payment.paidAmount > total) {
+                    booking.payment.paidAmount = total;
+                }
                 paymentUpdated = true;
 
-                const total = booking.pricing?.total || 0;
-                if (booking.payment.paidAmount >= total && total > 0) {
+                const remainingAfterPayment = roundMoney(Math.max(total - booking.payment.paidAmount, 0));
+                if (total > 0 && remainingAfterPayment <= MONEY_EPSILON) {
                     booking.payment.status = 'paid';
                 } else if (booking.payment.paidAmount > 0) {
                     booking.payment.status = 'partial';
@@ -270,7 +293,7 @@ async function updateBooking(
             }
 
             if (body.payment.paidAmount !== undefined) {
-                const paidAmount = Number(body.payment.paidAmount);
+                const paidAmount = roundMoney(Number(body.payment.paidAmount));
                 if (!Number.isFinite(paidAmount) || paidAmount < 0) {
                     return NextResponse.json(
                         { error: 'Invalid paid amount' },
@@ -278,12 +301,19 @@ async function updateBooking(
                     );
                 }
                 booking.payment = booking.payment || { status: 'pending', paidAmount: 0, transactions: [] } as any;
-                booking.payment.paidAmount = paidAmount;
+                const total = roundMoney(booking.pricing?.total || 0);
+                if (total > 0 && exceedsWithTolerance(paidAmount, total)) {
+                    return NextResponse.json(
+                        { error: 'Paid amount exceeds booking total' },
+                        { status: 400 }
+                    );
+                }
+                booking.payment.paidAmount = total > 0 ? Math.min(paidAmount, total) : paidAmount;
                 paymentUpdated = true;
 
                 if (!body.payment.status) {
-                    const total = booking.pricing?.total || 0;
-                    if (booking.payment.paidAmount >= total && total > 0) {
+                    const remainingAfterManualSet = roundMoney(Math.max(total - booking.payment.paidAmount, 0));
+                    if (total > 0 && remainingAfterManualSet <= MONEY_EPSILON) {
                         booking.payment.status = 'paid';
                     } else if (booking.payment.paidAmount > 0) {
                         booking.payment.status = 'partial';

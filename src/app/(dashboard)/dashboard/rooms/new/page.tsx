@@ -12,8 +12,9 @@ import {
     DollarSign,
     Hash,
     Building2,
+    Check,
 } from 'lucide-react';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { createRoomSchema, CreateRoomInput } from '@/lib/validations';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
@@ -51,6 +52,7 @@ export default function NewRoomPage() {
     const {
         register,
         handleSubmit,
+        watch,
         formState: { errors, isSubmitting },
     } = useForm<CreateRoomInput>({
         resolver: zodResolver(createRoomSchema),
@@ -58,6 +60,7 @@ export default function NewRoomPage() {
             capacity: { adults: 2, children: 0 },
         },
     });
+    const selectedRoomType = watch('type');
 
     const toggleAmenity = (amenity: string) => {
         setSelectedAmenities((prev) =>
@@ -95,16 +98,16 @@ export default function NewRoomPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto">
+        <div className="create-shell max-w-3xl mx-auto">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
+            <div className="create-hero page-hero flex items-center gap-4 mb-8">
                 <button
                     onClick={() => router.back()}
-                    className="p-2 rounded-lg hover:bg-white/10"
+                    className="relative z-10 p-2 rounded-lg hover:bg-white/10"
                 >
                     <ArrowRight className="w-5 h-5" />
                 </button>
-                <div>
+                <div className="relative z-10">
                     <h1 className="text-2xl font-bold text-white">
                         {t(lang, 'إضافة غرفة جديدة', 'Add New Room')}
                     </h1>
@@ -123,7 +126,7 @@ export default function NewRoomPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="card p-6 space-y-6">
+                <div className="create-card card p-6 space-y-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <BedDouble className="w-5 h-5 text-primary-300" />
                         {t(lang, 'معلومات الغرفة', 'Room Information')}
@@ -227,27 +230,39 @@ export default function NewRoomPage() {
                             {t(lang, 'نوع الغرفة *', 'Room type *')}
                         </label>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {roomTypes.map((type) => (
-                                <label
-                                    key={type.value}
-                                    className="relative flex cursor-pointer rounded-xl border border-white/10 p-4 focus:outline-none hover:border-primary-500/60 transition-colors"
-                                >
-                                    <input
-                                        type="radio"
-                                        {...register('type')}
-                                        value={type.value}
-                                        className="sr-only"
-                                    />
-                                    <div className="flex flex-col">
-                                        <span className="font-medium text-white">
-                                            {type.label[lang]}
-                                        </span>
-                                        <span className="text-xs text-white/50 mt-1">
-                                            {type.description[lang]}
-                                        </span>
-                                    </div>
-                                </label>
-                            ))}
+                            {roomTypes.map((type) => {
+                                const isSelected = selectedRoomType === type.value;
+                                return (
+                                    <label
+                                        key={type.value}
+                                        className={`create-type-card relative flex cursor-pointer rounded-xl border p-4 transition-all ${
+                                            isSelected
+                                                ? 'is-selected border-primary-400 bg-primary-500/12 shadow-[0_0_0_1px_rgba(59,130,246,0.28),0_4px_12px_rgba(37,99,235,0.14)]'
+                                                : 'border-white/10 hover:border-primary-500/60 hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            {...register('type')}
+                                            value={type.value}
+                                            className="sr-only"
+                                        />
+                                        {isSelected && (
+                                            <span className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-500 text-white">
+                                                <Check className="w-4 h-4" />
+                                            </span>
+                                        )}
+                                        <div className={`flex flex-col ${isSelected ? 'pr-8' : ''}`}>
+                                            <span className="font-medium text-white">
+                                                {type.label[lang]}
+                                            </span>
+                                            <span className={isSelected ? 'text-xs text-primary-200 mt-1' : 'text-xs text-white/50 mt-1'}>
+                                                {type.description[lang]}
+                                            </span>
+                                        </div>
+                                    </label>
+                                );
+                            })}
                         </div>
                         {errors.type && (
                             <p className="mt-1 text-sm text-danger-500">{errors.type.message}</p>
@@ -268,7 +283,7 @@ export default function NewRoomPage() {
                 </div>
 
                 {/* Amenities */}
-                <div className="card p-6">
+                <div className="create-card card p-6">
                     <h2 className="text-lg font-semibold text-white mb-4">
                         {t(lang, 'المرافق والخدمات', 'Amenities')}
                     </h2>
@@ -278,7 +293,7 @@ export default function NewRoomPage() {
                                 key={amenity.value}
                                 type="button"
                                 onClick={() => toggleAmenity(amenity.value)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedAmenities.includes(amenity.value)
+                                className={`create-chip px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedAmenities.includes(amenity.value)
                                         ? 'bg-primary-500/80 text-white'
                                         : 'bg-white/5 text-white/70 hover:bg-white/10'
                                     }`}
@@ -290,7 +305,7 @@ export default function NewRoomPage() {
                 </div>
 
                 {/* Submit */}
-                <div className="flex justify-end gap-4">
+                <div className="create-cta-row flex justify-end gap-4">
                     <button
                         type="button"
                         onClick={() => router.back()}

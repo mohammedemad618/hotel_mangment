@@ -33,18 +33,18 @@
 }
 
 .light {
-  --app-bg: #f5f8fc;
-  --app-bg-2: #ffffff;
-  --app-surface: rgba(255, 255, 255, 0.88);
-  --app-surface-strong: rgba(255, 255, 255, 0.96);
-  --app-border: rgba(15, 23, 42, 0.1);
-  --app-muted: #4c6179;
-  --app-text: #0f2238;
-  --app-glow: rgba(37, 99, 235, 0.12);
+  --app-bg: #edf3fa;
+  --app-bg-2: #e5edf6;
+  --app-surface: rgba(244, 248, 252, 0.9);
+  --app-surface-strong: rgba(248, 251, 254, 0.93);
+  --app-border: rgba(15, 23, 42, 0.065);
+  --app-muted: #5f7187;
+  --app-text: #1f2937;
+  --app-glow: rgba(37, 99, 235, 0.055);
   --app-bg-pattern:
-    radial-gradient(68% 80% at 10% 8%, rgba(37, 99, 235, 0.09), transparent 63%),
-    radial-gradient(72% 78% at 90% 14%, rgba(6, 182, 212, 0.08), transparent 64%),
-    radial-gradient(118% 95% at 50% 115%, rgba(37, 99, 235, 0.07), transparent 60%);
+    radial-gradient(68% 80% at 10% 8%, rgba(37, 99, 235, 0.045), transparent 63%),
+    radial-gradient(72% 78% at 90% 14%, rgba(6, 182, 212, 0.035), transparent 64%),
+    radial-gradient(118% 95% at 50% 115%, rgba(37, 99, 235, 0.03), transparent 60%);
 }
 
 * {
@@ -91,9 +91,9 @@ body {
 }
 
 .light .glass {
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(248, 252, 255, 0.88));
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.9));
+  border-color: rgba(15, 23, 42, 0.075);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045), 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 /* Card styles */
@@ -114,11 +114,18 @@ body {
 }
 
 .light .card {
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(160deg, rgba(250, 252, 254, 0.94), rgba(240, 245, 250, 0.88)),
+    var(--app-surface);
+  border-color: rgba(15, 23, 42, 0.075);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045), 0 1px 2px rgba(15, 23, 42, 0.03);
+  backdrop-filter: blur(6px);
 }
 
 .light .card:hover {
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.065), 0 1px 3px rgba(15, 23, 42, 0.04);
+  border-color: rgba(37, 99, 235, 0.16);
+  transform: none;
 }
 
 .page-hero {
@@ -148,11 +155,11 @@ body {
 }
 
 .light .page-hero::before {
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.16), transparent 72%);
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.09), transparent 72%);
 }
 
 .light .page-hero::after {
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.14), transparent 72%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.07), transparent 72%);
 }
 
 .page-hero-content {
@@ -173,7 +180,7 @@ body {
 }
 
 .light .stat-card::before {
-  border-top-color: rgba(37, 99, 235, 0.2);
+  border-top-color: rgba(37, 99, 235, 0.14);
 }
 
 .stat-icon {
@@ -183,8 +190,8 @@ body {
 }
 
 .light .stat-icon {
-  background: linear-gradient(145deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.08));
-  border-color: rgba(37, 99, 235, 0.18);
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.09), rgba(6, 182, 212, 0.05));
+  border-color: rgba(37, 99, 235, 0.14);
 }
 
 .filter-shell {
@@ -196,9 +203,9 @@ body {
 
 .light .filter-shell {
   background:
-    linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(245, 250, 255, 0.86)),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(246, 251, 255, 0.89)),
     var(--app-surface-strong);
-  border-color: rgba(15, 23, 42, 0.1);
+  border-color: rgba(15, 23, 42, 0.08);
 }
 
 .surface-tile {
@@ -208,8 +215,9 @@ body {
 }
 
 .light .surface-tile {
-  border-color: rgba(16, 32, 51, 0.16);
-  background: rgba(16, 32, 51, 0.025);
+  border-color: rgba(16, 32, 51, 0.1);
+  background: rgba(244, 248, 252, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 /* Button base */
@@ -223,7 +231,7 @@ body {
 }
 
 .light .btn-primary {
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.14);
 }
 
 .btn-secondary {
@@ -234,13 +242,13 @@ body {
 
 .light .btn-secondary {
   color: rgba(15, 35, 56, 0.9);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(244, 249, 255, 0.86));
-  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(244, 249, 255, 0.84));
+  border-color: rgba(15, 23, 42, 0.11);
 }
 
 .light .btn-secondary:hover {
   color: rgba(15, 35, 56, 1);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(236, 246, 255, 0.9));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(238, 247, 255, 0.88));
 }
 
 .btn-danger {
@@ -274,31 +282,31 @@ body {
 }
 
 .light .input {
-  color: rgba(15, 35, 56, 0.92);
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(37, 99, 235, 0.18);
+  color: rgba(31, 41, 55, 0.92);
+  background: rgba(248, 251, 254, 0.94);
+  border-color: rgba(15, 23, 42, 0.12);
 }
 
 .light .input::placeholder {
-  color: rgba(15, 35, 56, 0.45);
+  color: rgba(75, 85, 99, 0.52);
 }
 
 .light .input:focus {
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
 }
 
 .light .input-compact {
-  color: rgba(15, 35, 56, 0.9);
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(31, 41, 55, 0.9);
+  background: rgba(247, 250, 253, 0.93);
+  border-color: rgba(15, 23, 42, 0.12);
 }
 
 .light .input-compact::placeholder {
-  color: rgba(15, 35, 56, 0.42);
+  color: rgba(75, 85, 99, 0.5);
 }
 
 .light .input-compact:focus {
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.07);
 }
 
 /* Badge styles */
@@ -388,9 +396,9 @@ body {
 }
 
 .light .table-container {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(246, 250, 253, 0.95);
   border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .light .table thead {
@@ -398,7 +406,7 @@ body {
 }
 
 .light .table td {
-  color: rgba(15, 35, 56, 0.8);
+  color: rgba(31, 41, 55, 0.82);
 }
 
 .light .table tbody tr:hover {
@@ -411,27 +419,27 @@ body {
 }
 
 .light .text-white\/90 {
-  color: rgba(16, 32, 51, 0.9) !important;
+  color: rgba(31, 41, 55, 0.92) !important;
 }
 
 .light .text-white\/80 {
-  color: rgba(16, 32, 51, 0.8) !important;
+  color: rgba(31, 41, 55, 0.84) !important;
 }
 
 .light .text-white\/70 {
-  color: rgba(16, 32, 51, 0.7) !important;
+  color: rgba(55, 65, 81, 0.76) !important;
 }
 
 .light .text-white\/60 {
-  color: rgba(16, 32, 51, 0.6) !important;
+  color: rgba(75, 85, 99, 0.68) !important;
 }
 
 .light .text-white\/50 {
-  color: rgba(16, 32, 51, 0.5) !important;
+  color: rgba(107, 114, 128, 0.6) !important;
 }
 
 .light .text-white\/40 {
-  color: rgba(16, 32, 51, 0.4) !important;
+  color: rgba(107, 114, 128, 0.52) !important;
 }
 
 .light .text-white\/30 {
@@ -812,4 +820,366 @@ body {
 
 .light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
   border-color: rgba(16, 32, 51, 0.08) !important;
+}
+
+/* Light mode soft-shadow overrides for Tailwind shadow utilities */
+.light .shadow-card {
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+.light .hover\:shadow-card-hover:hover {
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+}
+
+.light .shadow-glass {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.055), 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+}
+
+/* Dashboard polish */
+.dashboard-shell {
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.dashboard-hero-badges {
+  flex-wrap: wrap;
+}
+
+.dashboard-kpi-card .stat-icon {
+  width: fit-content;
+}
+
+.dashboard-action-tile,
+.dashboard-notification-item,
+.dashboard-insight-tile {
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.dashboard-action-tile:hover,
+.dashboard-notification-item:hover,
+.dashboard-insight-tile:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-chart-placeholder {
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-chart-placeholder::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.88), rgba(6, 182, 212, 0.88));
+}
+
+.light .dashboard-header {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.04);
+}
+
+.light .dashboard-sidebar {
+  background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(244, 248, 253, 0.97));
+  border-left-color: rgba(15, 23, 42, 0.07);
+}
+
+.light .dashboard-search-shell {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.light .dashboard-unread-pill {
+  background: rgba(37, 99, 235, 0.05);
+  border-color: rgba(37, 99, 235, 0.12);
+  color: rgba(15, 35, 56, 0.76);
+}
+
+.light .dashboard-nav-link {
+  color: rgba(15, 35, 56, 0.68);
+}
+
+.light .dashboard-nav-link:hover {
+  color: rgba(15, 35, 56, 0.95);
+  background: rgba(37, 99, 235, 0.045);
+  border-color: rgba(37, 99, 235, 0.14);
+}
+
+.light .dashboard-profile-chip {
+  background: rgba(37, 99, 235, 0.04);
+  border: 1px solid rgba(37, 99, 235, 0.11);
+}
+
+.light .dashboard-hero {
+  border-color: rgba(37, 99, 235, 0.11);
+}
+
+.light .dashboard-hero-badges .badge-primary {
+  background: rgba(37, 99, 235, 0.09);
+  color: #1d4ed8;
+}
+
+.light .dashboard-kpi-card .stat-icon {
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.045));
+  border-color: rgba(37, 99, 235, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.light .dashboard-chart-placeholder {
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.08) 0%,
+    rgba(6, 182, 212, 0.04) 46%,
+    rgba(255, 255, 255, 0.75) 100%
+  );
+  border-color: rgba(37, 99, 235, 0.12);
+}
+
+.light .dashboard-action-tile,
+.light .dashboard-notification-item,
+.light .dashboard-insight-tile {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.light .dashboard-action-tile:hover,
+.light .dashboard-notification-item:hover,
+.light .dashboard-insight-tile:hover {
+  border-color: rgba(37, 99, 235, 0.17) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.06);
+  transform: none;
+}
+
+/* Listing pages polish (Rooms / Bookings / Guests) */
+.listing-shell {
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.listing-hero {
+  isolation: isolate;
+}
+
+.listing-filter-shell,
+.listing-view-toggle,
+.listing-card,
+.listing-empty,
+.listing-table,
+.listing-icon-link {
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, color 180ms ease;
+}
+
+.light .listing-hero {
+  border-color: rgba(37, 99, 235, 0.11);
+}
+
+.light .listing-filter-shell {
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(246, 251, 255, 0.88)),
+    var(--app-surface-strong);
+  border-color: rgba(15, 23, 42, 0.085);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.055), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.light .listing-view-toggle {
+  border-color: rgba(37, 99, 235, 0.14);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.light .listing-view-toggle button:not(.bg-primary-500\/20) {
+  color: rgba(15, 35, 56, 0.72);
+}
+
+.light .listing-view-toggle button:not(.bg-primary-500\/20):hover {
+  color: rgba(15, 35, 56, 0.95);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.light .listing-stat-card .stat-icon {
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.045));
+  border-color: rgba(37, 99, 235, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.light .listing-card {
+  border-color: rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.94), rgba(248, 252, 255, 0.86)),
+    var(--app-surface);
+}
+
+.light .listing-card:hover {
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.075), 0 1px 3px rgba(15, 23, 42, 0.04);
+  transform: none;
+}
+
+.light .listing-empty {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.light .listing-table {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.93);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.light .listing-icon-link {
+  color: rgba(15, 35, 56, 0.7);
+}
+
+.light .listing-icon-link:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: rgba(15, 35, 56, 0.92);
+}
+
+/* Detail pages polish (Room / Booking / Guest details) */
+.detail-shell {
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.detail-hero {
+  isolation: isolate;
+}
+
+.detail-main-card,
+.detail-side-card,
+.detail-mini-card,
+.detail-surface-row,
+.detail-empty,
+.detail-back-link {
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, color 180ms ease;
+}
+
+.light .detail-hero {
+  border-color: rgba(37, 99, 235, 0.11);
+}
+
+.light .detail-main-card,
+.light .detail-side-card,
+.light .detail-empty {
+  border-color: rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.95), rgba(248, 252, 255, 0.88)),
+    var(--app-surface);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.light .detail-main-card:hover,
+.light .detail-side-card:hover {
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.075), 0 1px 3px rgba(15, 23, 42, 0.04);
+  transform: none;
+}
+
+.light .detail-mini-card {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.light .detail-surface-row {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.light .detail-back-link {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(244, 249, 255, 0.88));
+  color: rgba(15, 35, 56, 0.9);
+}
+
+.light .detail-back-link:hover {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(236, 246, 255, 0.9));
+  color: rgba(15, 35, 56, 1);
+}
+
+/* Creation pages polish (new room / booking / guest) */
+.create-shell {
+  margin-inline: auto;
+}
+
+.create-hero {
+  isolation: isolate;
+}
+
+.create-card,
+.create-type-card,
+.create-chip,
+.create-summary-tile,
+.create-dropdown,
+.create-cta-row {
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, color 180ms ease;
+}
+
+.create-cta-row {
+  flex-wrap: wrap;
+}
+
+.light .create-hero {
+  border-color: rgba(37, 99, 235, 0.11);
+}
+
+.light .create-card {
+  border-color: rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.95), rgba(248, 252, 255, 0.89)),
+    var(--app-surface);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.light .create-card:hover {
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.075), 0 1px 3px rgba(15, 23, 42, 0.04);
+  transform: none;
+}
+
+.light .create-type-card {
+  border-color: rgba(15, 23, 42, 0.11) !important;
+  background: rgba(255, 255, 255, 0.68) !important;
+}
+
+.light .create-type-card:hover {
+  border-color: rgba(37, 99, 235, 0.18) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+}
+
+.light .create-type-card.is-selected {
+  border-color: rgba(37, 99, 235, 0.32) !important;
+  background: rgba(37, 99, 235, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.16), 0 4px 10px rgba(37, 99, 235, 0.1) !important;
+}
+
+.light .create-chip {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(37, 99, 235, 0.06);
+  color: rgba(15, 35, 56, 0.78);
+}
+
+.light .create-chip:hover {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.light .create-chip.bg-primary-500\/80 {
+  border-color: rgba(37, 99, 235, 0.28);
+  background: rgba(37, 99, 235, 0.72) !important;
+  color: #ffffff;
+}
+
+.light .create-summary-tile {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.light .create-dropdown {
+  border-color: rgba(15, 23, 42, 0.11) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.05) !important;
 }

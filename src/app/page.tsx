@@ -4,7 +4,6 @@ import {
     ArrowLeft,
     Shield,
     Sparkles,
-    TrendingUp,
     CheckCircle,
     Users,
     CalendarCheck,
@@ -13,10 +12,19 @@ import {
     BarChart3,
 } from 'lucide-react';
 
-const quickStats = [
-    { label: 'جاهزية التشغيل', value: '99.9%', note: 'استقرار البنية' },
-    { label: 'مراقبة مستمرة', value: '24/7', note: 'تنبيهات لحظية' },
-    { label: 'عمليات يومية', value: '+120', note: 'سير عمل متكامل' },
+const platformHighlights = [
+    {
+        title: 'تشغيل موحد',
+        note: 'الحجوزات والغرف والضيوف في لوحة واحدة.',
+    },
+    {
+        title: 'تنبيهات لحظية',
+        note: 'إشعارات فورية للحالات التشغيلية المهمة.',
+    },
+    {
+        title: 'تقارير عملية',
+        note: 'رؤية واضحة تدعم القرار الإداري اليومي.',
+    },
 ];
 
 const operationsFlow = [
@@ -53,8 +61,14 @@ const coreFeatures = [
     {
         icon: BarChart3,
         title: 'مؤشرات أداء حية',
-        desc: 'متابعة الإيراد والإشغال والتنبيهات من نفس الشاشة.',
+        desc: 'متابعة التشغيل والتنبيهات من نفس الشاشة.',
     },
+];
+
+const liveSignals = [
+    { label: 'إشغال الغرف', value: 'متابعة مباشرة', icon: CalendarCheck },
+    { label: 'حالة الحجوزات', value: 'تحديث تلقائي', icon: BellRing },
+    { label: 'مهام التشغيل', value: 'عرض لحظي', icon: Clock3 },
 ];
 
 export default function HomePage() {
@@ -102,22 +116,16 @@ export default function HomePage() {
                                 دخول لوحة التحكم
                                 <ArrowLeft className="w-4 h-4" />
                             </Link>
-                            <a
-                                href="https://wa.me/966500000000"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn-secondary text-base sm:text-lg px-6 py-3"
-                            >
-                                طلب عرض تجريبي عبر واتساب
-                            </a>
+                            <Link href="/register" className="btn-secondary text-base sm:text-lg px-6 py-3">
+                                طلب تفعيل حساب جديد
+                            </Link>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-xl">
-                            {quickStats.map((stat) => (
-                                <div key={stat.label} className="surface-tile px-4 py-3">
-                                    <p className="text-lg sm:text-xl font-semibold text-white">{stat.value}</p>
-                                    <p className="text-xs text-white/70 mt-1">{stat.label}</p>
-                                    <p className="text-[11px] text-white/45 mt-0.5">{stat.note}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl">
+                            {platformHighlights.map((item) => (
+                                <div key={item.title} className="surface-tile px-4 py-3">
+                                    <p className="text-sm font-semibold text-white">{item.title}</p>
+                                    <p className="text-xs text-white/60 mt-1">{item.note}</p>
                                 </div>
                             ))}
                         </div>
@@ -129,51 +137,22 @@ export default function HomePage() {
                         <div className="card p-5 sm:p-6 space-y-5 relative landing-scanline">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-white/60">صافي إيراد اليوم</p>
-                                    <p className="text-3xl font-semibold text-white mt-1">128,400 ر.س</p>
+                                    <p className="text-sm text-white/60">لوحة تشغيل لحظية</p>
+                                    <p className="text-2xl font-semibold text-white mt-1">متابعة مركزية للعمليات</p>
                                 </div>
-                                <span className="badge-success inline-flex items-center gap-1">
-                                    <TrendingUp className="w-3.5 h-3.5" />
-                                    +12.4%
-                                </span>
+                                <span className="badge-success">متصل</span>
                             </div>
 
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs text-white/60">
-                                    <span>إشغال الغرف</span>
-                                    <span>74%</span>
-                                </div>
-                                <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                                    <div className="h-full w-[74%] rounded-full bg-gradient-to-r from-primary-500 to-accent-500" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="surface-tile p-3">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-white/60">الحجوزات الجديدة</p>
-                                        <CalendarCheck className="w-4 h-4 text-accent-300" />
+                            <div className="grid grid-cols-1 gap-3">
+                                {liveSignals.map((signal) => (
+                                    <div key={signal.label} className="surface-tile p-3 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-white/60">{signal.label}</p>
+                                            <p className="text-sm text-white mt-1">{signal.value}</p>
+                                        </div>
+                                        <signal.icon className="w-4 h-4 text-primary-300" />
                                     </div>
-                                    <p className="text-2xl font-semibold text-white mt-2">42</p>
-                                </div>
-                                <div className="surface-tile p-3">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-white/60">طلبات الخدمة</p>
-                                        <BellRing className="w-4 h-4 text-warning-500" />
-                                    </div>
-                                    <p className="text-2xl font-semibold text-white mt-2">9</p>
-                                </div>
-                            </div>
-
-                            <div className="surface-tile p-3">
-                                <div className="flex items-center justify-between text-xs text-white/60">
-                                    <span>المهام الحرجة المفتوحة</span>
-                                    <Clock3 className="w-4 h-4 text-primary-300" />
-                                </div>
-                                <div className="flex items-center justify-between mt-2">
-                                    <p className="text-white font-medium">استجابة فريق التشغيل</p>
-                                    <p className="text-success-500 text-sm">ضمن الهدف</p>
-                                </div>
+                                ))}
                             </div>
                         </div>
 
@@ -194,15 +173,15 @@ export default function HomePage() {
                             <div className="mt-2 space-y-2 text-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="text-white/70">تسجيل دخول مدير الفندق</span>
-                                    <span className="text-white/45 text-xs">الآن</span>
+                                    <span className="text-success-500 text-xs">تم</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-white/70">تأكيد حجز جديد</span>
-                                    <span className="text-white/45 text-xs">قبل 3 د</span>
+                                    <span className="text-success-500 text-xs">تم</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-white/70">إغلاق وردية الاستقبال</span>
-                                    <span className="text-white/45 text-xs">قبل 12 د</span>
+                                    <span className="text-success-500 text-xs">تم</span>
                                 </div>
                             </div>
                         </div>

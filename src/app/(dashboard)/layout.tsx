@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -22,49 +22,12 @@ import {
 } from 'lucide-react';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
-import type { HotelNotificationType } from '@/core/notifications/types';
-import type { HotelNotificationCategory } from '@/core/notifications/catalog';
-
-export interface HotelSettings {
-    currency: string;
-    timezone: string;
-    language: 'ar' | 'en';
-    checkInTime: string;
-    checkOutTime: string;
-    taxRate: number;
-    theme?: 'light' | 'dark' | 'system';
-    notifications?: {
-        newBooking: boolean;
-        cancelledBooking: boolean;
-        paymentReceived: boolean;
-        dailyReport: boolean;
-        subscriptionExpiry?: boolean;
-    };
-}
-
-export interface HotelProfile {
-    name?: string;
-    email?: string;
-    phone?: string;
-    logo?: string;
-    address?: {
-        street?: string;
-        city?: string;
-        country?: string;
-        postalCode?: string;
-    };
-}
-
-export interface HotelNotification {
-    id: string;
-    type: HotelNotificationType;
-    category: HotelNotificationCategory;
-    message: string;
-    createdAt: string;
-    isRead: boolean;
-    readAt: string | null;
-    actionUrl: string | null;
-}
+import {
+    HotelSettingsContext,
+    type HotelNotification,
+    type HotelProfile,
+    type HotelSettings,
+} from './dashboard-context';
 
 interface UserData {
     id: string;
@@ -87,28 +50,6 @@ interface UserData {
         notificationsLog?: HotelNotification[];
     };
 }
-
-interface HotelSettingsContextValue {
-    settings: HotelSettings | null;
-    setSettings: (next: HotelSettings | null) => void;
-    notifications: HotelNotification[];
-    setNotifications: (
-        next: HotelNotification[] | ((prev: HotelNotification[]) => HotelNotification[])
-    ) => void;
-    hotelProfile: HotelProfile | null;
-    setHotelProfile: (next: HotelProfile | null) => void;
-}
-
-const SettingsContext = createContext<HotelSettingsContextValue>({
-    settings: null,
-    setSettings: () => {},
-    notifications: [],
-    setNotifications: () => {},
-    hotelProfile: null,
-    setHotelProfile: () => {},
-});
-
-export const useHotelSettings = () => useContext(SettingsContext);
 
 const navigation = [
     { name: { ar: 'لوحة التحكم', en: 'Dashboard' }, href: '/dashboard', icon: LayoutDashboard },
@@ -242,7 +183,7 @@ export default function DashboardLayout({
             )}
 
             <aside
-                className={`fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${
+                className={`dashboard-sidebar fixed inset-y-0 right-0 z-50 w-72 bg-[color:var(--app-surface-strong)] border-l border-white/10 shadow-card backdrop-blur-xl transform transition-transform duration-300 lg:translate-x-0 ${
                     sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
                 }`}
             >
@@ -269,7 +210,7 @@ export default function DashboardLayout({
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border ${
+                                    className={`dashboard-nav-link flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 border ${
                                         isActive
                                             ? 'bg-primary-500/15 text-white border-primary-500/40'
                                             : 'text-white/60 border-transparent hover:bg-white/5 hover:text-white'
@@ -284,7 +225,7 @@ export default function DashboardLayout({
                     </nav>
 
                     <div className="p-4 border-t border-white/5">
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                        <div className="dashboard-profile-chip flex items-center gap-3 p-3 rounded-xl bg-white/5">
                             <div className="p-2 bg-primary-500/20 rounded-full">
                                 <User className="w-5 h-5 text-primary-300" />
                             </div>
@@ -305,7 +246,7 @@ export default function DashboardLayout({
             </aside>
 
             <div className="lg:mr-72">
-                <header className="sticky top-0 z-30 bg-[color:var(--app-surface)] backdrop-blur-xl border-b border-white/10">
+                <header className="dashboard-header sticky top-0 z-30 bg-[color:var(--app-surface)] backdrop-blur-xl border-b border-white/10">
                     <div className="flex items-center h-16 px-4 sm:px-6 lg:px-8 gap-4">
                         <button
                             onClick={() => setSidebarOpen(true)}
@@ -313,7 +254,7 @@ export default function DashboardLayout({
                         >
                             <Menu className="w-6 h-6" />
                         </button>
-                        <div className="hidden md:flex items-center gap-2 bg-[color:var(--app-surface-strong)] border border-white/10 rounded-xl px-3 py-2 flex-1 max-w-xl">
+                        <div className="dashboard-search-shell hidden md:flex items-center gap-2 bg-[color:var(--app-surface-strong)] border border-white/10 rounded-xl px-3 py-2 flex-1 max-w-xl">
                             <Search className="w-4 h-4 text-white/40" />
                             <input
                                 className="bg-transparent text-sm text-white/80 placeholder-white/40 focus:outline-none w-full"
@@ -327,7 +268,7 @@ export default function DashboardLayout({
 
                         <div className="flex-1 md:flex-none" />
 
-                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70">
+                        <div className="dashboard-unread-pill hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70">
                             <Bell className="w-4 h-4 text-primary-300" />
                             <span>
                                 {t(lang, 'غير المقروءة', 'Unread')}: {unreadNotifications}
@@ -340,11 +281,11 @@ export default function DashboardLayout({
                     </div>
                 </header>
 
-                <SettingsContext.Provider
+                <HotelSettingsContext.Provider
                     value={{ settings, setSettings, notifications, setNotifications, hotelProfile, setHotelProfile }}
                 >
                     <main className="p-4 sm:p-6 lg:p-8">{children}</main>
-                </SettingsContext.Provider>
+                </HotelSettingsContext.Provider>
             </div>
         </div>
     );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 import {
@@ -248,7 +248,7 @@ export default function GuestDetailsPage() {
 
     if (error || !guest) {
         return (
-            <div className="card p-8 text-center">
+            <div className="detail-empty card p-8 text-center">
                 <p className="text-danger-600">{error || t(lang, 'النزيل غير موجود', 'Guest not found')}</p>
                 <button onClick={() => router.back()} className="btn-secondary mt-4">
                     {t(lang, 'العودة', 'Back')}
@@ -261,8 +261,8 @@ export default function GuestDetailsPage() {
     const TypeIcon = typeInfo.icon;
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-4">
+        <div className="detail-shell dashboard-shell space-y-6">
+            <div className="detail-hero page-hero flex items-center gap-4">
                 <button
                     onClick={() => router.back()}
                     className="p-2 rounded-lg hover:bg-white/10"
@@ -300,7 +300,7 @@ export default function GuestDetailsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="card p-6">
+                    <div className="detail-main-card card p-6">
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-3 bg-primary-500/15 rounded-xl">
@@ -506,7 +506,7 @@ export default function GuestDetailsPage() {
                         )}
                     </div>
 
-                    <div className="card p-6">
+                    <div className="detail-main-card card p-6">
                         <h3 className="text-lg font-semibold text-white mb-4">
                             {t(lang, 'ملاحظات النزيل', 'Guest Notes')}
                         </h3>
@@ -523,26 +523,26 @@ export default function GuestDetailsPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="card p-6 space-y-4">
+                    <div className="detail-side-card card p-6 space-y-4">
                         <h3 className="text-sm font-medium text-white/70">
                             {t(lang, 'إحصائيات النزيل', 'Guest Stats')}
                         </h3>
                         <div className="grid grid-cols-1 gap-3">
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                            <div className="detail-surface-row p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/60">
                                     <CalendarCheck className="w-4 h-4" />
                                     <span>{t(lang, 'عدد الإقامات', 'Stays')}</span>
                                 </div>
                                 <span className="font-semibold text-white">{guest.totalStays}</span>
                             </div>
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                            <div className="detail-surface-row p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/60">
                                     <DollarSign className="w-4 h-4" />
                                     <span>{t(lang, 'إجمالي الإنفاق', 'Total spend')}</span>
                                 </div>
                                 <span className="font-semibold text-success-500">{formatCurrency(guest.totalSpent)}</span>
                             </div>
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                            <div className="detail-surface-row p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-white/60">
                                     <Clock className="w-4 h-4" />
                                     <span>{t(lang, 'آخر إقامة', 'Last stay')}</span>
@@ -552,7 +552,7 @@ export default function GuestDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="card p-6 space-y-3">
+                    <div className="detail-side-card card p-6 space-y-3">
                         <h3 className="text-sm font-medium text-white/70">
                             {t(lang, 'تواصل سريع', 'Quick Contact')}
                         </h3>
@@ -572,12 +572,12 @@ export default function GuestDetailsPage() {
                                 {t(lang, 'إرسال بريد', 'Send email')}
                             </a>
                         )}
-                        <Link href="/dashboard/guests" className="btn-secondary w-full text-sm">
+                        <Link href="/dashboard/guests" className="detail-back-link btn-secondary w-full text-sm">
                             {t(lang, 'العودة لقائمة النزلاء', 'Back to guests')}
                         </Link>
                     </div>
 
-                    <div className="card p-6 space-y-3">
+                    <div className="detail-side-card card p-6 space-y-3">
                         <h3 className="text-sm font-medium text-white/70">
                             {t(lang, 'إدارة البيانات', 'Data Management')}
                         </h3>

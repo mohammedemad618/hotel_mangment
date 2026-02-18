@@ -3,6 +3,7 @@ import connectDB from '@/core/db/connection';
 import { Booking, Guest, Room } from '@/core/db/models';
 import { withPermission, AuthContext } from '@/core/middleware/auth';
 import { PERMISSIONS } from '@/core/auth';
+import { createTenantQuery } from '@/core/db/tenantMiddleware';
 
 const getDayRange = (date: Date) => {
     const start = new Date(date);
@@ -26,10 +27,11 @@ const percent = (value: number, total: number): number => {
 async function handler(
     _request: NextRequest,
     _context: { params: Promise<Record<string, string>> },
-    _auth: AuthContext
+    auth: AuthContext
 ) {
     try {
         await connectDB();
+        const tenantQuery = createTenantQuery(auth.hotelId!);
 
         const now = new Date();
         const { start: startOfDay, end: endOfDay } = getDayRange(now);
@@ -38,7 +40,9 @@ async function handler(
             new Date(now.getFullYear(), now.getMonth() - 1, 1)
         );
 
-        const activeBookingFilter = { status: { $nin: ['cancelled', 'no_show'] } };
+        const activeBookingFilter = tenantQuery.filter({
+            status: { $nin: ['cancelled', 'no_show'] },
+        });
 
         const [
             totalRooms,
@@ -56,11 +60,11 @@ async function handler(
             overdueAgg,
             directShareAgg,
         ] = await Promise.all([
-            Room.countDocuments({ isActive: true }),
-            Room.countDocuments({ isActive: true, status: 'available' }),
-            Room.countDocuments({ isActive: true, status: 'occupied' }),
-            Booking.countDocuments({ status: 'pending' }),
-            Guest.countDocuments({}),
+            Room.countDocuments(tenantQuery.filter({ isActive: true })),
+            Room.countDocuments(tenantQuery.filter({ isActive: true, status: 'available' })),
+            Room.countDocuments(tenantQuery.filter({ isActive: true, status: 'occupied' })),
+            Booking.countDocuments(tenantQuery.filter({ status: 'pending' })),
+            Guest.countDocuments(tenantQuery.filter({})),
             Booking.countDocuments(activeBookingFilter),
             Booking.countDocuments({
                 ...activeBookingFilter,
@@ -172,7 +176,7 @@ async function handler(
         const directBookings = directShareAgg[0]?.direct || 0;
         const totalMonthlyBookings = directShareAgg[0]?.total || 0;
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
             data: {
                 totalRooms,
@@ -193,6 +197,9 @@ async function handler(
                 directChannelShare: percent(directBookings, totalMonthlyBookings),
             },
         });
+
+        response.headers.set('Cache-Control', 'no-store');
+        return response;
     } catch (error) {
         console.error('Dashboard stats error:', error);
         return NextResponse.json(

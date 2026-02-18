@@ -19,7 +19,7 @@ import {
     XCircle,
     ArrowUpDown,
 } from 'lucide-react';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 
@@ -170,9 +170,9 @@ export default function RoomsPage() {
     }, [filteredRooms, sortBy, sortDir]);
 
     return (
-        <div className="space-y-7">
+        <div className="listing-shell dashboard-shell space-y-6 lg:space-y-7">
             {/* Header */}
-            <div className="page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="listing-hero page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="relative z-10 flex items-center gap-4">
                     <div className="stat-icon">
                         <BedDouble className="w-6 h-6 text-primary-300" />
@@ -193,7 +193,7 @@ export default function RoomsPage() {
             </div>
 
             {/* Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="listing-stats-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 {[
                     { id: 'total', label: t(lang, 'إجمالي الغرف', 'Total Rooms'), value: stats.total, icon: Building2, tone: 'text-primary-300' },
                     { id: 'available', label: statusConfig.available.label[lang], value: stats.available, icon: Check, tone: 'text-success-500' },
@@ -201,7 +201,7 @@ export default function RoomsPage() {
                     { id: 'reserved', label: statusConfig.reserved.label[lang], value: stats.reserved, icon: CalendarCheck, tone: 'text-warning-500' },
                     { id: 'maintenance', label: t(lang, 'صيانة/تنظيف', 'Maintenance/Cleaning'), value: stats.maintenance, icon: Wrench, tone: 'text-danger-500' },
                 ].map((item) => (
-                    <div key={item.id} className="stat-card flex items-center gap-3">
+                    <div key={item.id} className="listing-stat-card stat-card flex items-center gap-3">
                         <div className="stat-icon">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
@@ -214,7 +214,7 @@ export default function RoomsPage() {
             </div>
 
             {/* Filters */}
-            <div className="filter-shell">
+            <div className="listing-filter-shell filter-shell">
                 <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -282,7 +282,7 @@ export default function RoomsPage() {
                                 ? t(lang, 'تصاعدي', 'Ascending')
                                 : t(lang, 'تنازلي', 'Descending')}
                         </button>
-                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
+                        <div className="listing-view-toggle flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('grid')}
@@ -323,7 +323,7 @@ export default function RoomsPage() {
                     <div className="spinner w-10 h-10" />
                 </div>
             ) : sortedRooms.length === 0 ? (
-                <div className="card p-12 text-center">
+                <div className="listing-empty card p-12 text-center">
                     <BedDouble className="w-16 h-16 mx-auto text-white/30" />
                     <p className="mt-4 text-white/60">
                         {t(
@@ -350,7 +350,7 @@ export default function RoomsPage() {
                         return (
                             <div
                                 key={room._id}
-                                className="card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up"
+                                className="listing-card card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
                                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary-500/0 via-primary-500/70 to-accent-500/0" />
@@ -410,7 +410,7 @@ export default function RoomsPage() {
                     })}
                 </div>
             ) : (
-                <div className="table-container shadow-card">
+                <div className="listing-table table-container shadow-card">
                     <table className="table">
                         <thead>
                             <tr>

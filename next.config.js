@@ -1,5 +1,30 @@
 /** @type {import('next').NextConfig} */
-const createSecurityHeaders = (isDev) => [
+const normalizeDomain = (value = '') =>
+    value
+        .trim()
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/.*$/, '')
+        .toLowerCase();
+
+const parseAllowedImageDomains = () => {
+    const raw = process.env.NEXT_IMAGE_ALLOWED_DOMAINS || '';
+    return raw
+        .split(',')
+        .map((entry) => normalizeDomain(entry))
+        .filter(Boolean);
+};
+
+const allowedImageDomains = parseAllowedImageDomains();
+
+const createSecurityHeaders = (isDev) => {
+    const imageSources = [
+        "'self'",
+        'data:',
+        'blob:',
+        ...allowedImageDomains.map((domain) => `https://${domain}`),
+    ].join(' ');
+
+    return [
     {
         key: 'X-Frame-Options',
         value: 'DENY',
@@ -26,9 +51,10 @@ const createSecurityHeaders = (isDev) => [
     },
     {
         key: 'Content-Security-Policy',
-        value: `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https:;`,
+        value: `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; frame-src 'none'; manifest-src 'self'; worker-src 'self' blob:; img-src ${imageSources}; script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https:; upgrade-insecure-requests;`,
     },
 ];
+};
 
 const baseConfig = {
     reactStrictMode: true,
@@ -38,12 +64,10 @@ const baseConfig = {
         },
     },
     images: {
-        remotePatterns: [
-            {
-                protocol: 'https',
-                hostname: '**',
-            },
-        ],
+        remotePatterns: allowedImageDomains.map((hostname) => ({
+            protocol: 'https',
+            hostname,
+        })),
     },
 };
 

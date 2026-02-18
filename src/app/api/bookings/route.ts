@@ -1,11 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/core/db/connection';
 import { Booking, Room, Guest, Hotel } from '@/core/db/models';
+import { BookingLock } from '@/core/db/models/BookingLock';
 import { withPermission, AuthContext } from '@/core/middleware/auth';
 import { PERMISSIONS } from '@/core/auth';
 import { createBookingSchema } from '@/lib/validations';
 import { createTenantQuery } from '@/core/db/tenantMiddleware';
 import mongoose from 'mongoose';
+
+const ROOM_BOOKING_LOCK_MS = 30 * 1000;
+
+function isMongoDuplicateKeyError(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: number }).code === 11000;
+}
+
+async function acquireRoomBookingLock(
+    roomId: mongoose.Types.ObjectId,
+    hotelId: mongoose.Types.ObjectId,
+    owner: string
+): Promise<mongoose.Types.ObjectId | null> {
+    const now = new Date();
+    await BookingLock.deleteOne({ roomId, expiresAt: { $lte: now } });
+
+    try {
+        const lock = await BookingLock.create({
+            roomId,
+            hotelId,
+            owner,
+            expiresAt: new Date(now.getTime() + ROOM_BOOKING_LOCK_MS),
+        });
+        return lock._id;
+    } catch (error) {
+        if (isMongoDuplicateKeyError(error)) {
+            return null;
+        }
+        throw error;
+    }
+}
+
+async function releaseRoomBookingLock(lockId: mongoose.Types.ObjectId | null): Promise<void> {
+    if (!lockId) return;
+    await BookingLock.deleteOne({ _id: lockId });
+}
 
 // GET: List bookings
 async function listBookings(
@@ -67,6 +103,8 @@ async function createBooking(
     context: { params: Promise<Record<string, string>> },
     auth: AuthContext
 ) {
+    let lockId: mongoose.Types.ObjectId | null = null;
+
     try {
         await connectDB();
 
@@ -87,6 +125,22 @@ async function createBooking(
             return NextResponse.json(
                 { error: 'بيانات الغرفة أو النزيل غير صحيحة' },
                 { status: 400 }
+            );
+        }
+
+        const roomObjectId = new mongoose.Types.ObjectId(roomId);
+        const guestObjectId = new mongoose.Types.ObjectId(guestId);
+        const hotelObjectId = new mongoose.Types.ObjectId(auth.hotelId!);
+
+        lockId = await acquireRoomBookingLock(
+            roomObjectId,
+            hotelObjectId,
+            `${auth.userId}:${Date.now()}`
+        );
+        if (!lockId) {
+            return NextResponse.json(
+                { error: 'Room is currently being booked, please try again' },
+                { status: 409 }
             );
         }
 
@@ -128,7 +182,7 @@ async function createBooking(
         }
 
         // Verify room exists and belongs to hotel
-        const room = await Room.findOne(tenantQuery.filter({ _id: roomId, isActive: true }));
+        const room = await Room.findOne(tenantQuery.filter({ _id: roomObjectId, isActive: true }));
         if (!room) {
             return NextResponse.json(
                 { error: 'الغرفة غير موجودة' },
@@ -137,7 +191,7 @@ async function createBooking(
         }
 
         // Verify guest exists and belongs to hotel
-        const guest = await Guest.findOne(tenantQuery.filter({ _id: guestId }));
+        const guest = await Guest.findOne(tenantQuery.filter({ _id: guestObjectId }));
         if (!guest) {
             return NextResponse.json(
                 { error: 'النزيل غير موجود' },
@@ -147,8 +201,8 @@ async function createBooking(
 
         // Check room availability
         const conflictingBooking = await Booking.findOne({
-            hotelId: new mongoose.Types.ObjectId(auth.hotelId!),
-            roomId: new mongoose.Types.ObjectId(roomId),
+            hotelId: hotelObjectId,
+            roomId: roomObjectId,
             status: { $nin: ['cancelled', 'checked_out', 'no_show'] },
             $or: [
                 { checkInDate: { $lt: checkOutDateTime, $gte: checkInDateTime } },
@@ -178,9 +232,9 @@ async function createBooking(
 
         // Create booking
         const booking = await Booking.create({
-            hotelId: new mongoose.Types.ObjectId(auth.hotelId!),
-            roomId: new mongoose.Types.ObjectId(roomId),
-            guestId: new mongoose.Types.ObjectId(guestId),
+            hotelId: hotelObjectId,
+            roomId: roomObjectId,
+            guestId: guestObjectId,
             checkInDate: checkInDateTime,
             checkOutDate: checkOutDateTime,
             numberOfGuests,
@@ -235,7 +289,7 @@ async function createBooking(
                 { status: 400 }
             );
         }
-        if (typeof error === 'object' && error && 'code' in error && (error as { code?: number }).code === 11000) {
+        if (isMongoDuplicateKeyError(error)) {
             return NextResponse.json(
                 { error: 'رقم الحجز موجود مسبقاً، حاول مرة أخرى' },
                 { status: 409 }
@@ -245,6 +299,14 @@ async function createBooking(
             { error: 'حدث خطأ أثناء إنشاء الحجز' },
             { status: 500 }
         );
+    } finally {
+        if (lockId) {
+            try {
+                await releaseRoomBookingLock(lockId);
+            } catch (lockReleaseError) {
+                console.error('Booking lock release error:', lockReleaseError);
+            }
+        }
     }
 }
 

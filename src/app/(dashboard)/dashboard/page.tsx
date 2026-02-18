@@ -15,7 +15,7 @@ import {
     ExternalLink,
     AlertCircle,
 } from 'lucide-react';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 import type { HotelNotificationCategory } from '@/core/notifications/catalog';
@@ -93,7 +93,7 @@ export default function DashboardPage() {
         setError(null);
 
         try {
-            const response = await fetchWithRefresh('/api/dashboard/stats');
+            const response = await fetchWithRefresh('/api/dashboard/stats', { cache: 'no-store' });
             const data = await response.json();
 
             if (!response.ok) {
@@ -311,8 +311,8 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="space-y-7">
-            <div className="page-hero flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="dashboard-shell space-y-6 lg:space-y-7">
+            <div className="page-hero dashboard-hero flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div className="relative z-10 flex items-center gap-4">
                     <div className="p-3 rounded-2xl bg-primary-500/20 border border-primary-500/30">
                         <ShieldCheck className="w-7 h-7 text-primary-300" />
@@ -330,7 +330,7 @@ export default function DashboardPage() {
                         </p>
                     </div>
                 </div>
-                <div className="relative z-10 flex items-center gap-3">
+                <div className="dashboard-hero-badges relative z-10 flex items-center gap-3">
                     <span className="badge-success">{t(lang, 'الحالة: نشط', 'Status: Active')}</span>
                     <span className="badge-primary">
                         {t(lang, 'المراقبة: مفعلة', 'Monitoring: Enabled')}
@@ -353,11 +353,11 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="dashboard-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {statsCards.map((stat, index) => (
                     <div
                         key={stat.id}
-                        className="stat-card animate-slide-up"
+                        className="dashboard-kpi-card stat-card animate-slide-up"
                         style={{ animationDelay: `${index * 80}ms` }}
                     >
                         <div className="stat-icon">
@@ -385,7 +385,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="card p-6 lg:col-span-2 relative overflow-hidden">
+                <div className="dashboard-revenue-card card p-6 lg:col-span-2 relative overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-white">
                             {t(lang, 'إيراد الشهر الحالي', 'Current Month Revenue')}
@@ -439,7 +439,7 @@ export default function DashboardPage() {
                             </span>
                         )}
                     </div>
-                    <div className="mt-6 h-40 rounded-2xl border border-white/10 bg-gradient-to-b from-primary-500/20 via-accent-500/5 to-transparent" />
+                    <div className="dashboard-chart-placeholder mt-6 h-40 rounded-2xl border border-white/10 bg-gradient-to-b from-primary-500/20 via-accent-500/5 to-transparent" />
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                         <div className="surface-tile">
                             <p className="text-xs text-white/50">{t(lang, 'الرصيد المستحق', 'Outstanding Balance')}</p>
@@ -454,7 +454,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="card p-6">
+                <div className="dashboard-activity-card card p-6">
                     <h2 className="text-lg font-semibold text-white mb-6">
                         {t(lang, 'نشاط اليوم', "Today's Activity")}
                     </h2>
@@ -479,7 +479,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="card p-6">
+            <div className="dashboard-insights-card card p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-white">
                         {t(lang, 'مؤشرات تشغيلية متقدمة', 'Advanced Operational Insights')}
@@ -488,7 +488,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {insightCards.map((item) => (
-                        <div key={item.id} className="surface-tile">
+                        <div key={item.id} className="dashboard-insight-tile surface-tile">
                             <p className="text-xs text-white/50">{item.title}</p>
                             <p className={`text-xl font-bold mt-2 ${item.tone}`}>{item.value}</p>
                             <p className="text-xs text-white/60 mt-2">{item.description}</p>
@@ -497,7 +497,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="card p-6">
+            <div className="dashboard-actions-card card p-6">
                 <h2 className="text-lg font-semibold text-white mb-6">
                     {t(lang, 'إجراءات سريعة', 'Quick Actions')}
                 </h2>
@@ -531,7 +531,7 @@ export default function DashboardPage() {
                         <a
                             key={action.id}
                             href={action.href}
-                            className="flex flex-col items-center gap-3 p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-primary-500/50 hover:bg-white/5 transition-all duration-200 group"
+                            className="dashboard-action-tile flex flex-col items-center gap-3 p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-primary-500/50 hover:bg-white/5 transition-all duration-200 group"
                         >
                             <action.icon className="w-8 h-8 text-white/50 group-hover:text-primary-300 transition-colors" />
                             <span className="text-sm font-medium text-white/70 group-hover:text-white">
@@ -550,7 +550,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="card p-6">
+            <div className="dashboard-notifications-card card p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <div className="flex items-center gap-2">
                         <h2 className="text-lg font-semibold text-white">
@@ -617,7 +617,7 @@ export default function DashboardPage() {
                 ) : (
                     <div className="space-y-3">
                         {filteredNotifications.map((item) => (
-                            <div key={item.id} className="surface-tile">
+                            <div key={item.id} className="dashboard-notification-item surface-tile">
                                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">

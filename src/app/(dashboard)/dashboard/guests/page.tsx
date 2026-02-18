@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 import {
@@ -155,9 +155,9 @@ export default function GuestsPage() {
     };
 
     return (
-        <div className="space-y-7">
+        <div className="listing-shell dashboard-shell space-y-6 lg:space-y-7">
             {/* Header */}
-            <div className="page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="listing-hero page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="relative z-10 flex items-center gap-4">
                     <div className="stat-icon">
                         <Users className="w-6 h-6 text-primary-300" />
@@ -177,7 +177,7 @@ export default function GuestsPage() {
                 </Link>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="listing-stats-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 {[
                     { id: 'total', label: t(lang, 'إجمالي النزلاء', 'Total guests'), value: stats.total, icon: Users, tone: 'text-primary-300' },
                     { id: 'vip', label: t(lang, 'نزلاء VIP', 'VIP guests'), value: stats.vip, icon: Crown, tone: 'text-warning-500' },
@@ -186,7 +186,7 @@ export default function GuestsPage() {
                     { id: 'stays', label: t(lang, 'إجمالي الإقامات', 'Total stays'), value: stats.stays, icon: CalendarCheck, tone: 'text-primary-300' },
                     { id: 'revenue', label: t(lang, 'إجمالي الإنفاق', 'Total spend'), value: formatCurrency(stats.revenue), icon: DollarSign, tone: 'text-success-500' },
                 ].map((item) => (
-                    <div key={item.id} className="stat-card flex items-center gap-3">
+                    <div key={item.id} className="listing-stat-card stat-card flex items-center gap-3">
                         <div className="stat-icon">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
@@ -199,7 +199,7 @@ export default function GuestsPage() {
             </div>
 
             {/* Filters */}
-            <div className="filter-shell">
+            <div className="listing-filter-shell filter-shell">
                 <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -250,7 +250,7 @@ export default function GuestsPage() {
                                 ? t(lang, 'تصاعدي', 'Ascending')
                                 : t(lang, 'تنازلي', 'Descending')}
                         </button>
-                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
+                        <div className="listing-view-toggle flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('grid')}
@@ -304,7 +304,7 @@ export default function GuestsPage() {
                     <div className="spinner w-10 h-10" />
                 </div>
             ) : sortedGuests.length === 0 ? (
-                <div className="card p-12 text-center">
+                <div className="listing-empty card p-12 text-center">
                     <Users className="w-16 h-16 mx-auto text-white/30" />
                     <p className="mt-4 text-white/60">
                         {t(
@@ -327,7 +327,7 @@ export default function GuestsPage() {
                         return (
                             <div
                                 key={guest._id}
-                                className={`card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up ${guest.isBlacklisted ? 'border-2 border-danger-500' : ''
+                                className={`listing-card card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up ${guest.isBlacklisted ? 'border-2 border-danger-500' : ''
                                     }`}
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
@@ -398,7 +398,7 @@ export default function GuestsPage() {
                     })}
                 </div>
             ) : (
-                <div className="table-container shadow-card">
+                <div className="listing-table table-container shadow-card">
                     <table className="table">
                         <thead>
                             <tr>
@@ -445,7 +445,7 @@ export default function GuestsPage() {
                                         <td>
                                             <Link
                                                 href={`/dashboard/guests/${guest._id}`}
-                                                className="p-2 rounded-lg hover:bg-white/10 inline-flex"
+                                                className="listing-icon-link p-2 rounded-lg hover:bg-white/10 inline-flex"
                                             >
                                                 <Eye className="w-4 h-4 text-white/60" />
                                             </Link>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 import {
@@ -178,8 +178,8 @@ export default function BookingsPage() {
     }, [filteredBookings, sortBy, sortDir]);
 
     return (
-        <div className="space-y-7">
-            <div className="page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="listing-shell dashboard-shell space-y-6 lg:space-y-7">
+            <div className="listing-hero page-hero flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="relative z-10 flex items-center gap-4">
                     <div className="stat-icon">
                         <CalendarCheck className="w-6 h-6 text-primary-300" />
@@ -199,7 +199,7 @@ export default function BookingsPage() {
                 </Link>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="listing-stats-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 {[
                     { id: 'total', label: t(lang, 'إجمالي الحجوزات', 'Total bookings'), value: stats.total, icon: CalendarCheck, tone: 'text-primary-300' },
                     { id: 'pending', label: statusConfig.pending.label[lang], value: stats.pending, icon: Clock, tone: 'text-warning-500' },
@@ -208,7 +208,7 @@ export default function BookingsPage() {
                     { id: 'checkedOut', label: t(lang, 'مغادرة', 'Checked out'), value: stats.checkedOut, icon: LogOut, tone: 'text-white/60' },
                     { id: 'revenue', label: t(lang, 'إجمالي القيمة', 'Total value'), value: formatCurrency(stats.revenue), icon: DollarSign, tone: 'text-success-500' },
                 ].map((item) => (
-                    <div key={item.id} className="stat-card flex items-center gap-3">
+                    <div key={item.id} className="listing-stat-card stat-card flex items-center gap-3">
                         <div className="stat-icon">
                             <item.icon className={`w-5 h-5 ${item.tone}`} />
                         </div>
@@ -220,7 +220,7 @@ export default function BookingsPage() {
                 ))}
             </div>
 
-            <div className="filter-shell">
+            <div className="listing-filter-shell filter-shell">
                 <div className="flex flex-col xl:flex-row xl:items-start gap-3">
                     <div className="flex-1 relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -288,7 +288,7 @@ export default function BookingsPage() {
                                 ? t(lang, 'تصاعدي', 'Ascending')
                                 : t(lang, 'تنازلي', 'Descending')}
                         </button>
-                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
+                        <div className="listing-view-toggle flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-1">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('grid')}
@@ -328,7 +328,7 @@ export default function BookingsPage() {
                     <div className="spinner w-10 h-10" />
                 </div>
             ) : sortedBookings.length === 0 ? (
-                <div className="card p-12 text-center">
+                <div className="listing-empty card p-12 text-center">
                     <CalendarCheck className="w-16 h-16 mx-auto text-white/30" />
                     <p className="mt-4 text-white/60">
                         {t(
@@ -356,7 +356,7 @@ export default function BookingsPage() {
                         return (
                             <div
                                 key={booking._id}
-                                className="card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up"
+                                className="listing-card card p-5 relative overflow-hidden border border-white/10 hover:shadow-card-hover transition-shadow animate-slide-up"
                                 style={{ animationDelay: `${index * 30}ms` }}
                             >
                                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary-500/0 via-primary-500/70 to-accent-500/0" />
@@ -418,7 +418,7 @@ export default function BookingsPage() {
                     })}
                 </div>
             ) : (
-                <div className="table-container shadow-card">
+                <div className="listing-table table-container shadow-card">
                     <table className="table">
                         <thead>
                             <tr>
@@ -485,7 +485,7 @@ export default function BookingsPage() {
                                         <td>
                                             <Link
                                                 href={`/dashboard/bookings/${booking._id}`}
-                                                className="p-2 rounded-lg hover:bg-white/10 inline-flex"
+                                                className="listing-icon-link p-2 rounded-lg hover:bg-white/10 inline-flex"
                                             >
                                                 <Eye className="w-4 h-4 text-white/60" />
                                             </Link>

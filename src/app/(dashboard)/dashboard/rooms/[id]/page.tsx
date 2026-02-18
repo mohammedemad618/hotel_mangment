@@ -21,7 +21,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 
@@ -252,7 +252,7 @@ export default function RoomDetailsPage() {
 
     if (error || !room) {
         return (
-            <div className="card p-8 text-center">
+            <div className="detail-empty card p-8 text-center">
                 <p className="text-danger-600">{error || t(lang, 'تعذر عرض الغرفة', 'Room not found')}</p>
                 <button onClick={() => router.back()} className="btn-secondary mt-4">
                     {t(lang, 'رجوع', 'Back')}
@@ -262,8 +262,8 @@ export default function RoomDetailsPage() {
     }
 
     return (
-        <div className="space-y-7">
-            <div className="page-hero flex items-center gap-4">
+        <div className="detail-shell dashboard-shell space-y-6 lg:space-y-7">
+            <div className="detail-hero page-hero flex items-center gap-4">
                 <button
                     onClick={() => router.back()}
                     className="relative z-10 p-2 rounded-lg hover:bg-white/10"
@@ -298,7 +298,7 @@ export default function RoomDetailsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="card p-6 relative overflow-hidden">
+                    <div className="detail-main-card card p-6 relative overflow-hidden">
                         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary-500/0 via-primary-500/70 to-accent-500/0" />
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex items-center gap-3">
@@ -504,7 +504,7 @@ export default function RoomDetailsPage() {
                         )}
                     </div>
 
-                    <div className="card p-6">
+                    <div className="detail-main-card card p-6">
                         <h3 className="text-sm font-medium text-white/70 mb-3">{t(lang, 'المرافق', 'Amenities')}</h3>
                         {room.amenities?.length ? (
                             <div className="flex flex-wrap gap-2">
@@ -522,7 +522,7 @@ export default function RoomDetailsPage() {
                         )}
                     </div>
 
-                    <div className="card p-6">
+                    <div className="detail-main-card card p-6">
                         <h3 className="text-sm font-medium text-white/70 mb-3">{t(lang, 'الوصف', 'Description')}</h3>
                         <p className="text-white/60">
                             {room.description || t(lang, 'لا يوجد وصف لهذه الغرفة.', 'No description for this room.')}
@@ -531,33 +531,33 @@ export default function RoomDetailsPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <div className="card p-5">
+                    <div className="detail-side-card card p-5">
                         <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'ملخص الغرفة', 'Room summary')}</h3>
                         <div className="space-y-3 text-sm">
-                            <div className="surface-tile flex items-center justify-between">
+                            <div className="detail-surface-row surface-tile flex items-center justify-between">
                                 <span className="text-white/50">{t(lang, 'رقم الغرفة', 'Room #')}</span>
                                 <span className="font-medium text-white">{room.roomNumber}</span>
                             </div>
-                            <div className="surface-tile flex items-center justify-between">
+                            <div className="detail-surface-row surface-tile flex items-center justify-between">
                                 <span className="text-white/50">{t(lang, 'الطابق', 'Floor')}</span>
                                 <span className="font-medium text-white">{room.floor}</span>
                             </div>
-                            <div className="surface-tile flex items-center justify-between">
+                            <div className="detail-surface-row surface-tile flex items-center justify-between">
                                 <span className="text-white/50">{t(lang, 'السعر', 'Rate')}</span>
                                 <span className="font-medium text-primary-300">{formatCurrency(room.pricePerNight)}</span>
                             </div>
-                            <div className="surface-tile flex items-center justify-between">
+                            <div className="detail-surface-row surface-tile flex items-center justify-between">
                                 <span className="text-white/50">{t(lang, 'الحالة', 'Status')}</span>
                                 <span className="font-medium text-white">{status.label[lang]}</span>
                             </div>
-                            <div className="surface-tile flex items-center justify-between">
+                            <div className="detail-surface-row surface-tile flex items-center justify-between">
                                 <span className="text-white/50">{t(lang, 'النشاط', 'Activity')}</span>
                                 <span className="font-medium text-white">{room.isActive === false ? t(lang, 'غير نشطة', 'Inactive') : t(lang, 'نشطة', 'Active')}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="card p-5">
+                    <div className="detail-side-card card p-5">
                         <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'الإجراءات', 'Actions')}</h3>
                         <div className="space-y-3">
                             <button
@@ -582,15 +582,15 @@ export default function RoomDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="card p-5">
+                    <div className="detail-side-card card p-5">
                         <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'البيانات الزمنية', 'Timestamps')}</h3>
                         <div className="space-y-3 text-sm">
-                            <div className="surface-tile flex items-center gap-2 text-white/60">
+                            <div className="detail-surface-row surface-tile flex items-center gap-2 text-white/60">
                                 <Clock className="w-4 h-4" />
                                 <span>{t(lang, 'تاريخ الإنشاء:', 'Created:')}</span>
                                 <span className="font-medium text-white mr-auto">{formatDateTime(room.createdAt)}</span>
                             </div>
-                            <div className="surface-tile flex items-center gap-2 text-white/60">
+                            <div className="detail-surface-row surface-tile flex items-center gap-2 text-white/60">
                                 <Clock className="w-4 h-4" />
                                 <span>{t(lang, 'آخر تحديث:', 'Last updated:')}</span>
                                 <span className="font-medium text-white mr-auto">{formatDateTime(room.updatedAt)}</span>
@@ -598,7 +598,7 @@ export default function RoomDetailsPage() {
                         </div>
                     </div>
 
-                    <Link href="/dashboard/rooms" className="btn-secondary w-full">
+                    <Link href="/dashboard/rooms" className="detail-back-link btn-secondary w-full">
                         {t(lang, 'العودة إلى قائمة الغرف', 'Back to rooms')}
                     </Link>
                 </div>

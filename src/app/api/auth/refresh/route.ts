@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     try {
         await connectDB();
         const clientIp = getClientIp(request);
-        const refreshRate = checkRateLimit(clientIp, {
+        const refreshRate = await checkRateLimit(clientIp, {
             keyPrefix: 'auth:refresh',
             windowMs: 60 * 1000,
             max: 30,

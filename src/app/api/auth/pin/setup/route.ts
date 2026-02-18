@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     try {
         await connectDB();
         const clientIp = getClientIp(request);
-        const rate = checkRateLimit(clientIp, {
+        const rate = await checkRateLimit(clientIp, {
             keyPrefix: 'auth:pin_setup',
             windowMs: 10 * 60 * 1000,
             max: 20,

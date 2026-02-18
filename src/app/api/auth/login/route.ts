@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
         const { email, password } = validation.data;
         const clientIp = getClientIp(request);
-        const loginRate = checkRateLimit(`${clientIp}:${email}`, {
+        const loginRate = await checkRateLimit(`${clientIp}:${email}`, {
             keyPrefix: 'auth:login',
             windowMs: 15 * 60 * 1000,
             max: 10,

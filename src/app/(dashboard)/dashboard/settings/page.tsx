@@ -13,7 +13,7 @@ import {
     Save,
     Loader2,
 } from 'lucide-react';
-import { useHotelSettings, HotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings, HotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 
@@ -434,6 +434,8 @@ export default function SettingsPage() {
                                                 >
                                                     <option value="SAR">{t(lang, 'ريال سعودي (SAR)', 'Saudi Riyal (SAR)')}</option>
                                                     <option value="AED">{t(lang, 'درهم إماراتي (AED)', 'UAE Dirham (AED)')}</option>
+                                                    <option value="IQD">{t(lang, 'دينار عراقي (IQD)', 'Iraqi Dinar (IQD)')}</option>
+                                                    <option value="SYP">{t(lang, 'ليرة سورية (SYP)', 'Syrian Pound (SYP)')}</option>
                                                     <option value="USD">{t(lang, 'دولار أمريكي (USD)', 'US Dollar (USD)')}</option>
                                                     <option value="EUR">{t(lang, 'يورو (EUR)', 'Euro (EUR)')}</option>
                                                 </select>

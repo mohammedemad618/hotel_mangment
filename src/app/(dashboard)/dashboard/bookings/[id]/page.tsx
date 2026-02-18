@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
 import {
@@ -90,6 +90,14 @@ const bookingSourceLabels: Record<string, { ar: string; en: string }> = {
     walkin: { ar: 'حجز مباشر', en: 'Walk-in' },
     ota: { ar: 'وكالات', en: 'OTA' },
 };
+
+const MONEY_EPSILON = 0.01;
+
+const roundMoney = (value: number) =>
+    Math.round((value + Number.EPSILON) * 100) / 100;
+
+const exceedsWithTolerance = (value: number, limit: number) =>
+    value - limit > MONEY_EPSILON;
 
 export default function BookingDetailsPage() {
     const { settings: hotelSettings, hotelProfile } = useHotelSettings();
@@ -183,16 +191,19 @@ export default function BookingDetailsPage() {
 
     const handleAddPayment = async () => {
         if (!booking) return;
-        const amount = Number(paymentAmount);
-        const total = booking.pricing?.total || 0;
-        const paid = booking.payment?.paidAmount || 0;
-        const remaining = Math.max(total - paid, 0);
+        setActionError(null);
+        setActionSuccess(null);
+
+        const amount = roundMoney(Number(paymentAmount));
+        const total = roundMoney(booking.pricing?.total || 0);
+        const paid = roundMoney(booking.payment?.paidAmount || 0);
+        const remaining = roundMoney(Math.max(total - paid, 0));
 
         if (!Number.isFinite(amount) || amount <= 0) {
             setActionError(t(lang, 'أدخل مبلغاً صحيحاً', 'Enter a valid amount'));
             return;
         }
-        if (amount > remaining) {
+        if (exceedsWithTolerance(amount, remaining)) {
             setActionError(t(lang, 'المبلغ أكبر من المتبقي', 'Amount exceeds the remaining balance'));
             return;
         }
@@ -216,11 +227,14 @@ export default function BookingDetailsPage() {
 
     const handleConfirmPayment = async () => {
         if (!booking) return;
-        const total = booking.pricing?.total || 0;
-        const paid = booking.payment?.paidAmount || 0;
-        const remaining = Math.max(total - paid, 0);
+        setActionError(null);
+        setActionSuccess(null);
 
-        if (remaining > 0) {
+        const total = roundMoney(booking.pricing?.total || 0);
+        const paid = roundMoney(booking.payment?.paidAmount || 0);
+        const remaining = roundMoney(Math.max(total - paid, 0));
+
+        if (remaining > MONEY_EPSILON) {
             setActionError(t(
                 lang,
                 'لا يمكن تأكيد الدفع قبل تسوية المبلغ المتبقي',
@@ -297,7 +311,7 @@ export default function BookingDetailsPage() {
 
     if (error || !booking) {
         return (
-            <div className="card p-8 text-center">
+            <div className="detail-empty card p-8 text-center">
                 <p className="text-danger-600">{error || t(lang, 'الحجز غير موجود', 'Booking not found')}</p>
                 <button onClick={() => router.back()} className="btn-secondary mt-4">
                     {t(lang, 'العودة', 'Back')}
@@ -309,9 +323,10 @@ export default function BookingDetailsPage() {
     const status = statusConfig[booking.status] || statusConfig.pending;
     const StatusIcon = status.icon;
     const paymentStatus = paymentStatusLabels[booking.payment?.status] || paymentStatusLabels.pending;
-    const total = booking.pricing?.total || 0;
-    const paid = booking.payment?.paidAmount || 0;
-    const remaining = Math.max(total - paid, 0);
+    const total = roundMoney(booking.pricing?.total || 0);
+    const paid = roundMoney(booking.payment?.paidAmount || 0);
+    const remaining = roundMoney(Math.max(total - paid, 0));
+    const isPaidInFull = remaining <= MONEY_EPSILON;
     const transactions = booking.payment?.transactions || [];
     const latestTransaction = transactions.length ? transactions[transactions.length - 1] : null;
     const paymentMethodValue = latestTransaction?.method || booking.payment?.method;
@@ -335,13 +350,13 @@ export default function BookingDetailsPage() {
     const canCheckOut = booking.status === 'checked_in';
     const canCancel = ['pending', 'confirmed'].includes(booking.status);
     const canNoShow = booking.status === 'confirmed';
-    const canConfirmPayment = remaining === 0 && booking.payment?.status !== 'paid';
-    const canPrintReceipt = booking.payment?.status === 'paid' || remaining === 0;
+    const canConfirmPayment = isPaidInFull && booking.payment?.status !== 'paid';
+    const canPrintReceipt = booking.payment?.status === 'paid' || isPaidInFull;
 
     return (
         <>
-            <div className="space-y-6 no-print">
-            <div className="flex items-center gap-4">
+            <div className="detail-shell dashboard-shell space-y-6 no-print">
+            <div className="detail-hero page-hero flex items-center gap-4">
                 <button
                     onClick={() => router.back()}
                     className="p-2 rounded-lg hover:bg-white/10"
@@ -376,7 +391,7 @@ export default function BookingDetailsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="card p-6 space-y-6">
+                    <div className="detail-main-card card p-6 space-y-6">
                         <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="p-3 bg-primary-500/15 rounded-xl">
@@ -435,19 +450,19 @@ export default function BookingDetailsPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div className="card p-4 bg-white/5">
+                            <div className="detail-mini-card card p-4 bg-white/5">
                                 <p className="text-white/50">{t(lang, 'عدد الليالي', 'Nights')}</p>
                                 <p className="font-semibold text-white">
                                     {t(lang, `${nights} ليلة`, `${nights} nights`)}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="detail-mini-card card p-4 bg-white/5">
                                 <p className="text-white/50">{t(lang, 'المبلغ المدفوع', 'Paid')}</p>
                                 <p className="font-semibold text-primary-300">
                                     {formatCurrency(paid)}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="detail-mini-card card p-4 bg-white/5">
                                 <p className="text-white/50">{t(lang, 'المتبقي', 'Remaining')}</p>
                                 <p className="font-semibold text-warning-500">
                                     {formatCurrency(remaining)}
@@ -456,25 +471,25 @@ export default function BookingDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="card p-6 space-y-4">
+                    <div className="detail-main-card card p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <CreditCard className="w-5 h-5 text-primary-300" />
                             {t(lang, 'إدارة المدفوعات', 'Payments')}
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div className="card p-4 bg-white/5">
+                            <div className="detail-mini-card card p-4 bg-white/5">
                                 <p className="text-white/50">{t(lang, 'المجموع الفرعي', 'Subtotal')}</p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(booking.pricing?.subtotal || 0)}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="detail-mini-card card p-4 bg-white/5">
                                 <p className="text-white/50">{t(lang, 'الضرائب', 'Taxes')}</p>
                                 <p className="font-semibold text-white">
                                     {formatCurrency(booking.pricing?.taxes || 0)}
                                 </p>
                             </div>
-                            <div className="card p-4 bg-white/5">
+                            <div className="detail-mini-card card p-4 bg-white/5">
                                 <p className="text-white/50">{t(lang, 'الإجمالي', 'Total')}</p>
                                 <p className="font-semibold text-success-500">
                                     {formatCurrency(total)}
@@ -493,7 +508,7 @@ export default function BookingDetailsPage() {
                                     onChange={(e) => setPaymentAmount(e.target.value)}
                                     className="input"
                                     min="0"
-                                    disabled={remaining === 0}
+                                    disabled={isPaidInFull}
                                 />
                             </div>
                             <div>
@@ -504,7 +519,7 @@ export default function BookingDetailsPage() {
                                     value={paymentMethod}
                                     onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
                                     className="input"
-                                    disabled={remaining === 0}
+                                    disabled={isPaidInFull}
                                 >
                                     {paymentMethods.map((method) => (
                                         <option key={method.value} value={method.value}>{method.label[lang]}</option>
@@ -521,7 +536,7 @@ export default function BookingDetailsPage() {
                                     onChange={(e) => setPaymentReference(e.target.value)}
                                     className="input"
                                     placeholder={t(lang, 'اختياري', 'Optional')}
-                                    disabled={remaining === 0}
+                                    disabled={isPaidInFull}
                                 />
                             </div>
                         </div>
@@ -530,7 +545,7 @@ export default function BookingDetailsPage() {
                                 type="button"
                                 onClick={handleAddPayment}
                                 className="btn-primary"
-                                disabled={updating || remaining === 0}
+                                disabled={updating || isPaidInFull}
                             >
                                 {updating ? (
                                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -568,7 +583,7 @@ export default function BookingDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="card p-6 space-y-4">
+                    <div className="detail-main-card card p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <FileText className="w-5 h-5 text-primary-300" />
                             {t(lang, 'الملاحظات والطلبات', 'Notes & Requests')}
@@ -610,7 +625,7 @@ export default function BookingDetailsPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <div className="card p-5">
+                    <div className="detail-side-card card p-5">
                         <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'الإجراءات السريعة', 'Quick actions')}</h3>
                         <div className="space-y-3">
                             <button
@@ -652,7 +667,7 @@ export default function BookingDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="card p-5 space-y-3">
+                    <div className="detail-side-card card p-5 space-y-3">
                         <h3 className="text-sm font-medium text-white/70">{t(lang, 'إلغاء الحجز', 'Cancel booking')}</h3>
                         <textarea
                             value={cancelReason}
@@ -672,7 +687,7 @@ export default function BookingDetailsPage() {
                         </button>
                     </div>
 
-                    <div className="card p-5">
+                    <div className="detail-side-card card p-5">
                         <h3 className="text-sm font-medium text-white/70 mb-4">{t(lang, 'البيانات الزمنية', 'Dates')}</h3>
                         <div className="space-y-3 text-sm">
                             <div className="flex items-center gap-2 text-white/60">
@@ -688,7 +703,7 @@ export default function BookingDetailsPage() {
                         </div>
                     </div>
 
-                    <Link href="/dashboard/bookings" className="btn-secondary w-full">
+                    <Link href="/dashboard/bookings" className="detail-back-link btn-secondary w-full">
                         {t(lang, 'العودة لقائمة الحجوزات', 'Back to bookings')}
                     </Link>
                 </div>

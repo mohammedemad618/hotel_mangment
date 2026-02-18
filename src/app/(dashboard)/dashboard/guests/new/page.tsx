@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +17,7 @@ import {
     CalendarCheck,
     Crown,
 } from 'lucide-react';
-import { useHotelSettings } from '@/app/(dashboard)/layout';
+import { useHotelSettings } from '@/app/(dashboard)/dashboard-context';
 import { createGuestSchema, CreateGuestInput } from '@/lib/validations';
 import { fetchWithRefresh } from '@/lib/fetchWithRefresh';
 import { normalizeLanguage, t } from '@/lib/i18n';
@@ -59,6 +59,7 @@ export default function NewGuestPage() {
     const { settings: hotelSettings } = useHotelSettings();
     const lang = normalizeLanguage(hotelSettings?.language);
     const [error, setError] = useState<string | null>(null);
+    const dateOfBirthRef = useRef<HTMLInputElement | null>(null);
 
     const {
         register,
@@ -75,6 +76,7 @@ export default function NewGuestPage() {
 
     const selectedGuestType = watch('guestType');
     const selectedIdType = watch('idType');
+    const dateOfBirthRegister = register('dateOfBirth');
 
     const onSubmit = async (data: CreateGuestInput) => {
         setError(null);
@@ -106,17 +108,31 @@ export default function NewGuestPage() {
             ? 'DL-987654'
             : '1234567890';
 
+    const openDatePicker = () => {
+        const input = dateOfBirthRef.current;
+        if (!input) return;
+
+        const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+        if (typeof pickerInput.showPicker === 'function') {
+            pickerInput.showPicker();
+            return;
+        }
+
+        input.focus();
+        input.click();
+    };
+
     return (
-        <div className="max-w-3xl mx-auto">
+        <div className="create-shell max-w-3xl mx-auto">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
+            <div className="create-hero page-hero flex items-center gap-4 mb-8">
                 <button
                     onClick={() => router.back()}
-                    className="p-2 rounded-lg hover:bg-white/10"
+                    className="relative z-10 p-2 rounded-lg hover:bg-white/10"
                 >
                     <ArrowRight className="w-5 h-5" />
                 </button>
-                <div>
+                <div className="relative z-10">
                     <h1 className="text-2xl font-bold text-white">
                         {t(lang, 'إضافة نزيل جديد', 'Add New Guest')}
                     </h1>
@@ -136,7 +152,7 @@ export default function NewGuestPage() {
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 {/* Guest Type */}
-                <div className="card p-6">
+                <div className="create-card card p-6">
                     <h2 className="text-lg font-semibold text-white mb-4">
                         {t(lang, 'نوع النزيل', 'Guest Type')}
                     </h2>
@@ -144,8 +160,8 @@ export default function NewGuestPage() {
                         {guestTypes.map((type) => (
                             <label
                                 key={type.value}
-                                className={`relative flex flex-col items-center cursor-pointer rounded-xl border-2 p-4 transition-all ${selectedGuestType === type.value
-                                        ? 'border-primary-500 bg-primary-500/15'
+                                className={`create-type-card relative flex flex-col items-center cursor-pointer rounded-xl border-2 p-4 transition-all ${selectedGuestType === type.value
+                                        ? 'is-selected border-primary-500 bg-primary-500/15'
                                         : 'border-white/10 hover:border-primary-300'
                                     }`}
                             >
@@ -166,7 +182,7 @@ export default function NewGuestPage() {
                 </div>
 
                 {/* Personal Info */}
-                <div className="card p-6 space-y-6">
+                <div className="create-card card p-6 space-y-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <User className="w-5 h-5 text-primary-300" />
                         {t(lang, 'المعلومات الشخصية', 'Personal Information')}
@@ -240,12 +256,23 @@ export default function NewGuestPage() {
                                 {t(lang, 'تاريخ الميلاد', 'Date of birth')}
                             </label>
                             <div className="relative">
-                                <CalendarCheck className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                                 <input
                                     type="date"
-                                    {...register('dateOfBirth')}
-                                    className="input pr-10"
+                                    {...dateOfBirthRegister}
+                                    ref={(element) => {
+                                        dateOfBirthRef.current = element;
+                                        dateOfBirthRegister.ref(element);
+                                    }}
+                                    className="input pr-12"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={openDatePicker}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-primary-300 transition-colors"
+                                    aria-label={t(lang, 'فتح منتقي التاريخ', 'Open date picker')}
+                                >
+                                    <CalendarCheck className="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
 
@@ -324,7 +351,7 @@ export default function NewGuestPage() {
                 </div>
 
                 {/* Submit */}
-                <div className="flex justify-end gap-4">
+                <div className="create-cta-row flex justify-end gap-4">
                     <button
                         type="button"
                         onClick={() => router.back()}
