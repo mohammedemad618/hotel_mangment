@@ -154,6 +154,8 @@ const formatAlertTimeline = (alert: SubscriptionAlert) => {
     return formatDaysRemaining(alert.daysRemaining);
 };
 
+const renewalDurationLabel = (plan: Plan) => (plan === 'free' ? '14 يوم' : '30 يوم');
+
 function alertBadgeClass(severity: AlertSeverity): string {
     if (severity === 'expired') return 'badge-danger';
     if (severity === 'critical') return 'badge-danger';
@@ -190,6 +192,7 @@ export default function SuperAdminPage() {
     } = useForm<RegisterHotelInput>({ resolver: zodResolver(registerHotelSchema) });
 
     const isMainSuperAdmin = role === 'super_admin';
+    const canVerifyHotels = role === 'super_admin' || role === 'sub_super_admin';
 
     const fetchMe = async () => {
         try {
@@ -631,7 +634,7 @@ export default function SuperAdminPage() {
                 ) : (
                     <div className="table-container">
                         <table className="table">
-                            <thead><tr><th>الفندق</th><th>المدير</th><th>الاشتراك</th><th>الدفع / الانتهاء</th><th>الحالة</th>{isMainSuperAdmin && <th>التحقق</th>}<th>إجراءات</th></tr></thead>
+                            <thead><tr><th>الفندق</th><th>المدير</th><th>الاشتراك</th><th>الدفع / الانتهاء</th><th>الحالة</th>{canVerifyHotels && <th>التحقق</th>}<th>إجراءات</th></tr></thead>
                             <tbody>
                                 {filteredHotels.map((hotel) => (
                                     <tr key={hotel._id}>
@@ -640,13 +643,13 @@ export default function SuperAdminPage() {
                                         <td><p className="text-xs">{planLabels[hotel.subscription?.plan || 'free']}</p><p className="text-xs text-white/60">{statusLabels[hotel.subscription?.status || 'active']}</p></td>
                                         <td><p className="text-xs">الدفع: {formatDate(hotel.subscription?.paymentDate)}</p><p className="text-xs text-white/60">الانتهاء: {formatDate(hotel.subscription?.endDate)}</p></td>
                                         <td>{hotel.isActive ? <span className="badge-success inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" />نشط</span> : <span className="badge-danger inline-flex items-center gap-1"><XCircle className="w-3 h-3" />غير نشط</span>}</td>
-                                        {isMainSuperAdmin && <td>{hotel.verification?.isVerified ? <span className="badge-success">موثق</span> : <span className="badge-warning">بانتظار التحقق</span>}</td>}
+                                        {canVerifyHotels && <td>{hotel.verification?.isVerified ? <span className="badge-success">موثق</span> : <span className="badge-warning">بانتظار التحقق</span>}</td>}
                                         <td>
                                             <div className="flex flex-wrap gap-1">
                                                 <button className="btn-secondary text-xs" onClick={() => toggleHotel(hotel)}>{hotel.isActive ? 'تعطيل' : 'تفعيل'}</button>
                                                 <button className="btn-secondary text-xs" onClick={() => openSubscription(hotel)}><Settings2 className="w-3.5 h-3.5" />تجديد الاشتراك</button>
                                                 <button className="btn-secondary text-xs" onClick={() => openAdmin(hotel)}><Pencil className="w-3.5 h-3.5" />حساب المدير</button>
-                                                {isMainSuperAdmin && <button className="btn-secondary text-xs" onClick={() => toggleVerify(hotel)}>{hotel.verification?.isVerified ? 'إلغاء التحقق' : 'تحقق'}</button>}
+                                                {canVerifyHotels && <button className="btn-secondary text-xs" onClick={() => toggleVerify(hotel)}>{hotel.verification?.isVerified ? 'إلغاء التحقق' : 'تحقق'}</button>}
                                             </div>
                                         </td>
                                     </tr>
@@ -659,14 +662,23 @@ export default function SuperAdminPage() {
 
             {subscriptionForm && (
                 <div className="card p-5 space-y-3">
-                    <h3 className="text-base font-semibold text-white">تجديد الاشتراك (30 يوم)</h3>
+                    <h3 className="text-base font-semibold text-white">
+                        تجديد الاشتراك ({renewalDurationLabel(subscriptionForm.plan)})
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <select value={subscriptionForm.plan} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, plan: e.target.value as Plan } : prev)} className="input-compact w-full"><option value="free">مجاني</option><option value="basic">أساسي</option><option value="premium">احترافي</option><option value="enterprise">مؤسسي</option></select>
                         <input type="date" value={subscriptionForm.paymentDate} onChange={(e) => setSubscriptionForm((prev) => prev ? { ...prev, paymentDate: e.target.value } : prev)} className="input-compact w-full" />
                         <div className="surface-tile text-sm text-white/70">
                             <p className="text-xs text-white/50 mb-1">تاريخ الانتهاء الحالي</p>
                             <p className="font-medium text-white">{formatDate(subscriptionForm.currentEndDate)}</p>
-                            <p className="text-xs text-white/50 mt-2">عند التجديد سيتم تمديد الاشتراك تلقائياً لمدة 30 يوم، وتفعيل الحساب.</p>
+                            <p className="text-xs text-white/50 mt-2">
+                                عند التجديد سيتم تمديد الاشتراك تلقائياً لمدة {renewalDurationLabel(subscriptionForm.plan)} وتفعيل الحساب.
+                            </p>
+                            {subscriptionForm.plan === 'free' && (
+                                <p className="text-xs text-warning-500 mt-2">
+                                    ملاحظة: الباقة المجانية يمكن تجديدها مرة واحدة فقط.
+                                </p>
+                            )}
                         </div>
                     </div>
                     <div className="flex justify-end gap-2"><button className="btn-secondary text-sm" onClick={() => setSubscriptionForm(null)}>إغلاق</button><button className="btn-primary text-sm" onClick={saveSubscription} disabled={savingSubscription}>{savingSubscription ? <Loader2 className="w-4 h-4 animate-spin" /> : 'تجديد الاشتراك'}</button></div>

@@ -1,8 +1,14 @@
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 export const SUBSCRIPTION_RENEWAL_DAYS = 30;
+export const FREE_SUBSCRIPTION_RENEWAL_DAYS = 14;
+export const FREE_SUBSCRIPTION_MAX_RENEWALS = 1;
 export const SUBSCRIPTION_WARNING_DAYS = 3;
 export const SUBSCRIPTION_GRACE_DAYS = 3;
+
+export function getRenewalDaysForPlan(plan: string | null | undefined): number {
+    return plan === 'free' ? FREE_SUBSCRIPTION_RENEWAL_DAYS : SUBSCRIPTION_RENEWAL_DAYS;
+}
 
 export function addDays(date: Date, days: number): Date {
     return new Date(date.getTime() + days * DAY_IN_MS);
@@ -104,7 +110,7 @@ export function isSubscriptionExpired(
 export function computeRenewalEndDate(
     currentEndDate: Date | string | null | undefined,
     paymentDate: Date,
-    renewalDays: number = SUBSCRIPTION_RENEWAL_DAYS
+    plan: string | null | undefined = null
 ): Date {
     const current =
         currentEndDate instanceof Date
@@ -118,5 +124,6 @@ export function computeRenewalEndDate(
             ? current
             : paymentDate;
 
+    const renewalDays = getRenewalDaysForPlan(plan);
     return addDays(baseDate, renewalDays);
 }

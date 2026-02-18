@@ -53,6 +53,7 @@ export default function SettingsPage() {
         status?: string;
         endDate?: string | null;
         paymentDate?: string | null;
+        freeRenewalsUsed?: number;
         renewalRequest?: {
             isPending?: boolean;
             requestedAt?: string | null;
@@ -62,6 +63,8 @@ export default function SettingsPage() {
     const [renewalNote, setRenewalNote] = useState('');
     const [requestingRenewal, setRequestingRenewal] = useState(false);
     const lang = normalizeLanguage(settings.language);
+    const isFreeRenewalLocked =
+        subscriptionInfo?.plan === 'free' && (subscriptionInfo?.freeRenewalsUsed || 0) >= 1;
 
     const toLayoutSettings = useCallback((data: typeof defaultSettings): HotelSettings => ({
         currency: data.currency,
@@ -100,6 +103,10 @@ export default function SettingsPage() {
         status: hotel?.subscription?.status || 'active',
         endDate: hotel?.subscription?.endDate || null,
         paymentDate: hotel?.subscription?.paymentDate || null,
+        freeRenewalsUsed:
+            typeof hotel?.subscription?.freeRenewalsUsed === 'number'
+                ? hotel.subscription.freeRenewalsUsed
+                : 0,
         renewalRequest: hotel?.subscription?.renewalRequest || null,
     }), []);
 
@@ -648,13 +655,26 @@ export default function SettingsPage() {
                                                     )}
                                                 </p>
                                             )}
+                                            {isFreeRenewalLocked && (
+                                                <p className="text-xs text-warning-500">
+                                                    {t(
+                                                        lang,
+                                                        'تم استهلاك تجديد الباقة المجانية (مرة واحدة فقط).',
+                                                        'The free-plan renewal has already been used (one time only).'
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="flex justify-end">
                                             <button
                                                 type="button"
                                                 onClick={handleRenewalRequest}
-                                                disabled={requestingRenewal || Boolean(subscriptionInfo?.renewalRequest?.isPending)}
+                                                disabled={
+                                                    requestingRenewal ||
+                                                    Boolean(subscriptionInfo?.renewalRequest?.isPending) ||
+                                                    isFreeRenewalLocked
+                                                }
                                                 className="btn-primary"
                                             >
                                                 {requestingRenewal ? (

@@ -5,6 +5,7 @@ import { Hotel } from '@/core/db/models';
 import { PERMISSIONS } from '@/core/auth';
 import { withPermission, AuthContext } from '@/core/middleware/auth';
 import { renewalRequestSchema } from '@/lib/validations';
+import { FREE_SUBSCRIPTION_MAX_RENEWALS } from '@/core/subscription/policy';
 
 const MAX_NOTIFICATION_LOG_ITEMS = 50;
 
@@ -51,6 +52,11 @@ async function requestRenewal(
             {
                 _id: auth.hotelId,
                 'subscription.renewalRequest.isPending': { $ne: true },
+                $or: [
+                    { 'subscription.plan': { $ne: 'free' } },
+                    { 'subscription.freeRenewalsUsed': { $lt: FREE_SUBSCRIPTION_MAX_RENEWALS } },
+                    { 'subscription.freeRenewalsUsed': { $exists: false } },
+                ],
             },
             {
                 $set: {
@@ -82,7 +88,7 @@ async function requestRenewal(
 
         if (!updatedHotel) {
             const existingHotel = await Hotel.findById(auth.hotelId)
-                .select('_id subscription.renewalRequest.isPending')
+                .select('_id subscription.plan subscription.freeRenewalsUsed subscription.renewalRequest.isPending')
                 .lean();
 
             if (!existingHotel) {
@@ -92,6 +98,21 @@ async function requestRenewal(
             if ((existingHotel as any)?.subscription?.renewalRequest?.isPending) {
                 return NextResponse.json(
                     { error: 'A renewal request is already pending' },
+                    { status: 409 }
+                );
+            }
+
+            const freeRenewalsUsed =
+                typeof (existingHotel as any)?.subscription?.freeRenewalsUsed === 'number'
+                    ? (existingHotel as any).subscription.freeRenewalsUsed
+                    : 0;
+
+            if (
+                (existingHotel as any)?.subscription?.plan === 'free' &&
+                freeRenewalsUsed >= FREE_SUBSCRIPTION_MAX_RENEWALS
+            ) {
+                return NextResponse.json(
+                    { error: 'Free subscription can only be renewed once' },
                     { status: 409 }
                 );
             }

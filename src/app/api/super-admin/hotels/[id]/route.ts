@@ -4,11 +4,16 @@ import { Hotel, User } from '@/core/db/models';
 import { withSuperAdmin, AuthContext } from '@/core/middleware/auth';
 import mongoose from 'mongoose';
 import { writeAuditLog } from '@/core/audit/logger';
-import { computeRenewalEndDate, isSubscriptionExpired } from '@/core/subscription/policy';
+import {
+    computeRenewalEndDate,
+    FREE_SUBSCRIPTION_MAX_RENEWALS,
+    isSubscriptionExpired,
+} from '@/core/subscription/policy';
 
 const PLAN_VALUES = new Set(['free', 'basic', 'premium', 'enterprise']);
 const STATUS_VALUES = new Set(['active', 'suspended', 'cancelled']);
 const MAX_NOTIFICATION_LOG_ITEMS = 50;
+type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'enterprise';
 
 function hasOwn(obj: Record<string, unknown>, key: string): boolean {
     return Object.prototype.hasOwnProperty.call(obj, key);
@@ -74,15 +79,33 @@ async function updateHotel(
         if (subscription && typeof subscription === 'object' && !Array.isArray(subscription)) {
             const payload = subscription as Record<string, unknown>;
             const renew = payload.renew === true;
+            const currentPlan = (targetHotel.subscription?.plan || 'free') as SubscriptionPlan;
+            let selectedPlan = currentPlan;
 
             if (hasOwn(payload, 'plan')) {
                 if (typeof payload.plan !== 'string' || !PLAN_VALUES.has(payload.plan)) {
                     return NextResponse.json({ error: 'Invalid plan value' }, { status: 400 });
                 }
-                updates['subscription.plan'] = payload.plan;
+                selectedPlan = payload.plan as SubscriptionPlan;
+                updates['subscription.plan'] = selectedPlan;
             }
 
             if (renew) {
+                const freeRenewalsUsed =
+                    typeof targetHotel.subscription?.freeRenewalsUsed === 'number'
+                        ? targetHotel.subscription.freeRenewalsUsed
+                        : 0;
+
+                if (
+                    selectedPlan === 'free' &&
+                    freeRenewalsUsed >= FREE_SUBSCRIPTION_MAX_RENEWALS
+                ) {
+                    return NextResponse.json(
+                        { error: 'Free subscription can only be renewed once' },
+                        { status: 400 }
+                    );
+                }
+
                 let paymentDate = now;
                 if (hasOwn(payload, 'paymentDate')) {
                     try {
@@ -108,19 +131,23 @@ async function updateHotel(
 
                 if (hasOwn(payload, 'endDate')) {
                     return NextResponse.json(
-                        { error: 'End date is managed automatically on renewal (30 days)' },
+                        { error: 'End date is managed automatically on renewal based on plan' },
                         { status: 400 }
                     );
                 }
 
                 const nextEndDate = computeRenewalEndDate(
                     targetHotel.subscription?.endDate || null,
-                    paymentDate
+                    paymentDate,
+                    selectedPlan
                 );
 
                 updates['subscription.paymentDate'] = paymentDate;
                 updates['subscription.endDate'] = nextEndDate;
                 updates['subscription.status'] = 'active';
+                if (selectedPlan === 'free') {
+                    updates['subscription.freeRenewalsUsed'] = freeRenewalsUsed + 1;
+                }
                 updates['subscription.renewalRequest.isPending'] = false;
                 updates['subscription.renewalRequest.requestedAt'] = null;
                 updates['subscription.renewalRequest.note'] = '';
@@ -175,8 +202,8 @@ async function updateHotel(
         }
 
         if (hasOwn(body, 'isVerified')) {
-            if (auth.role !== 'super_admin') {
-                return NextResponse.json({ error: 'Only main super admin can verify hotels' }, { status: 403 });
+            if (auth.role !== 'super_admin' && auth.role !== 'sub_super_admin') {
+                return NextResponse.json({ error: 'Only super admin roles can verify hotels' }, { status: 403 });
             }
 
             if (typeof body.isVerified !== 'boolean') {

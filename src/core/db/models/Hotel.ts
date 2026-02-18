@@ -19,6 +19,7 @@ export interface IHotel extends Document {
     };
     subscription: {
         plan: 'free' | 'basic' | 'premium' | 'enterprise';
+        freeRenewalsUsed?: number;
         status: 'active' | 'suspended' | 'cancelled';
         startDate: Date;
         paymentDate: Date | null;
@@ -110,6 +111,11 @@ const HotelSchema = new Schema<IHotel>(
                 type: String,
                 enum: ['free', 'basic', 'premium', 'enterprise'],
                 default: 'free',
+            },
+            freeRenewalsUsed: {
+                type: Number,
+                min: 0,
+                default: 0,
             },
             status: {
                 type: String,
